@@ -70,6 +70,11 @@ Xem hướng dẫn đầy đủ tại [docs/USAGE.md](docs/USAGE.md).
 
 App có hỗ trợ xoay nhiều free API key. Cách này dùng được để test, chạy đoạn ngắn, hoặc tránh một key bị quota tạm thời. Nhưng với truyện dài, free tier vẫn bị giới hạn RPM/TPM/RPD thấp hơn, dễ chậm và dễ vấp quota.
 
+Khuyến nghị model:
+
+- Dùng `Gemini 3.1 Flash` nếu bạn đang chạy bằng free key.
+- Dùng `Gemini 3.1 Flash Lite` nếu bạn đã setup billing và chạy Tier 1.
+
 Nếu dùng nghiêm túc, nên setup billing và dùng key Tier 1:
 
 - Rate limit cao hơn.
