@@ -19,5 +19,7 @@ export function maskApiKey(value: string) {
 }
 
 export function formatQuickTranslatorName(value: string) {
-  return value.replace(/\s*·\s*/g, ' · ');
+  return value
+    .replace(/\s*·\s*/g, ' · ')
+    .replace(/\s*([-‐‑‒–—―－])\s*/g, ' $1 ');
 }
