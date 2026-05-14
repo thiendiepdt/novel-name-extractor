@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { CATEGORIES, CATEGORY_LABELS } from '../constants';
-import type { Category, NameRow } from '@/lib/gemini';
+import type { NameRow } from '@/lib/gemini';
 import type { PageButton, SortField } from '../types';
 
 export function ResultsPanel({

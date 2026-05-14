@@ -12,6 +12,7 @@ npm run dev
 Trước khi mở pull request:
 
 ```bash
+npm run lint
 npm run typecheck
 npm run build
 ```
@@ -31,6 +32,7 @@ npm run build
 - Giải thích vấn đề người dùng gặp.
 - Mô tả hành vi sau khi sửa.
 - Có screenshot nếu thay đổi UI.
+- Chạy `npm run lint`.
 - Chạy `npm run typecheck`.
 - Chạy `npm run build`.
 - Update docs nếu thay đổi workflow, settings, model, export hoặc API behavior.
