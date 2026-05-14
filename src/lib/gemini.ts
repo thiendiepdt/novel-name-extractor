@@ -121,6 +121,7 @@ const FREE_TIER_REQUEST_TIMEOUT_MS = 30000;
 const MIN_REQUEST_TIMEOUT_SECONDS = 5;
 const MAX_REQUEST_TIMEOUT_SECONDS = 180;
 const MIN_TIMEOUT_SPLIT_CHARS = 1200;
+const MIN_POLICY_BLOCK_SPLIT_CHARS = 500;
 const GEMINI_SAFETY_SETTINGS_OFF = [
   { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'OFF' },
   { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'OFF' },
@@ -335,10 +336,12 @@ export async function extractChunksWithQueue({
               statusLabel: `Chunk ${index + 1}/${chunks.length} - thử ${attempt + 1}/${normalized.maxRetries + 1}`,
             });
           },
-          onRetry: ({ waitMs, split }) => {
+          onRetry: ({ waitMs, error, split, skipped }) => {
             emitProgress({
-              statusLabel: split
-                ? `Chunk ${index + 1}/${chunks.length} timeout, tách đôi để retry`
+              statusLabel: skipped
+                ? `Chunk ${index + 1}/${chunks.length} bị policy chặn, bỏ qua đoạn nhỏ`
+                : split
+                ? `Chunk ${index + 1}/${chunks.length} ${isPolicyBlockedError(error) ? 'bị policy chặn' : 'timeout'}, tách đôi để retry`
                 : waitMs > 0
                 ? `Chunk ${index + 1}/${chunks.length} retry sau ${Math.ceil(waitMs / 1000)}s`
                 : `Chunk ${index + 1}/${chunks.length} đổi key retry`,
@@ -417,7 +420,7 @@ async function extractChunkWithRetry({
   waitForSlot: () => Promise<boolean>;
   shouldCancel?: () => boolean;
   onAttempt?: (progress: { attempt: number }) => void;
-  onRetry?: (progress: { waitMs: number; error: GeminiError; attempt: number; split?: boolean }) => void;
+  onRetry?: (progress: { waitMs: number; error: GeminiError; attempt: number; split?: boolean; skipped?: boolean }) => void;
   modelId: string;
   chunk: string;
   index: number;
@@ -452,6 +455,36 @@ async function extractChunkWithRetry({
     } catch (error) {
       const geminiError = toGeminiError(error);
       coolDownApiKey(keyState, geminiError, attempt);
+      if (isPolicyBlockedError(geminiError)) {
+        if (canSplitChunkForPolicyBlock(chunk)) {
+          const [leftChunk, rightChunk] = splitChunkForRetry(chunk);
+          onRetry?.({ waitMs: 0, error: geminiError, attempt, split: true });
+
+          const commonArgs = {
+            acquireApiKey,
+            coolDownApiKey,
+            waitForSlot,
+            shouldCancel,
+            onAttempt,
+            onRetry,
+            modelId,
+            index,
+            total,
+            nameStyle,
+            recallMode,
+            descriptionMode,
+            tierId,
+            requestTimeoutSeconds,
+            maxRetries,
+          };
+          const leftRows = await extractChunkWithRetry({ ...commonArgs, chunk: leftChunk });
+          const rightRows = await extractChunkWithRetry({ ...commonArgs, chunk: rightChunk });
+          return [...leftRows, ...rightRows];
+        }
+
+        onRetry?.({ waitMs: 0, error: geminiError, attempt, skipped: true });
+        return [];
+      }
       if (!geminiError.retryable || attempt >= maxRetries) throw geminiError;
       if (geminiError.timedOut && canSplitChunkForRetry(chunk)) {
         const [leftChunk, rightChunk] = splitChunkForRetry(chunk);
@@ -525,6 +558,10 @@ function getDefaultRequestTimeoutSeconds(tierId: TierId) {
 
 function canSplitChunkForRetry(chunk: string) {
   return chunk.trim().length >= MIN_TIMEOUT_SPLIT_CHARS;
+}
+
+function canSplitChunkForPolicyBlock(chunk: string) {
+  return chunk.trim().length >= MIN_POLICY_BLOCK_SPLIT_CHARS;
 }
 
 function splitChunkForRetry(chunk: string): [string, string] {
@@ -972,4 +1009,10 @@ function getBlockReasonLabel(blockReason: string) {
     default:
       return `blockReason=${blockReason}`;
   }
+}
+
+function isPolicyBlockedError(error: GeminiError) {
+  return error.blockReason === 'PROHIBITED_CONTENT' ||
+    error.blockReason === 'SAFETY' ||
+    error.blockReason === 'BLOCKLIST';
 }
