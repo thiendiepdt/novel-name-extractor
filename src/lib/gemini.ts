@@ -121,6 +121,12 @@ const FREE_TIER_REQUEST_TIMEOUT_MS = 30000;
 const MIN_REQUEST_TIMEOUT_SECONDS = 5;
 const MAX_REQUEST_TIMEOUT_SECONDS = 180;
 const MIN_TIMEOUT_SPLIT_CHARS = 1200;
+const GEMINI_SAFETY_SETTINGS_OFF = [
+  { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'OFF' },
+  { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'OFF' },
+  { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'OFF' },
+  { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'OFF' },
+] as const;
 
 export function normalizeExtractionSettings(settings: Partial<ExtractionSettings> = {}): ExtractionSettings {
   const tierId = settings.tierId && RATE_LIMITS[settings.tierId]
@@ -586,6 +592,7 @@ async function extractChunk(
           maxOutputTokens: 16384,
           responseMimeType: 'application/json',
         },
+        safetySettings: GEMINI_SAFETY_SETTINGS_OFF,
       }),
     });
   } catch (error) {
