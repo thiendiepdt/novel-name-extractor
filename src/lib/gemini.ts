@@ -724,9 +724,12 @@ function buildPrompt(
 ) {
   const romanizationRule = nameStyle === 'western'
     ? [
-      '- This text is Western fantasy/Western-style Chinese translation. The "hanviet" field must NOT be Sino-Vietnamese.',
-      '- For Western names, output the natural Western/Latin name if recoverable, e.g. 阿瑟 -> Arthur, 梅林 -> Merlin, 罗兰 -> Roland.',
-      '- If the exact original Western spelling is uncertain, use a readable Vietnamese/Latin transliteration, not Han Viet.',
+      '- This text may be Western fantasy, mixed Eastern/Western fantasy, or Chinese translation of foreign names.',
+      '- The "hanviet" field is a Vietnamese display name, not always English/Latin.',
+      '- For clearly Western/foreign names, output the natural Western/Latin name only when recoverable from common usage or context, e.g. 阿瑟 -> Arthur, 梅林 -> Merlin, 罗兰 -> Roland.',
+      '- If a name is Chinese/East Asian, xianxia-style, sect/title/realm-style, or not clearly Western/foreign, use Vietnamese Sino-reading with full Vietnamese diacritics.',
+      '- If the exact Western spelling is uncertain and the name could be East Asian, prefer Vietnamese Sino-reading instead of forcing an English/Latin guess.',
+      '- Never convert every name to English. Mixed stories can contain both Western names and East Asian names.',
     ]
     : [
       '- This text is Eastern/Chinese fantasy. The "hanviet" field must be Vietnamese Sino-reading with full Vietnamese diacritics, title case with spaces.',
