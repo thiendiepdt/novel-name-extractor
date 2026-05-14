@@ -10,10 +10,10 @@ AI Name Extractor là công cụ chạy trên trình duyệt để trích xuất
 
 - Trích xuất entity tiếng Trung thành dòng `Tên Trung=Tên hiển thị tiếng Việt`.
 - Hỗ trợ truyện Đông phương/tiên hiệp với Hán Việt có dấu.
-- Hỗ trợ truyện Tây phương bản dịch Trung, ưu tiên tên Latin tự nhiên khi đoán được.
+- Hỗ trợ truyện Tây phương hoặc lai Đông/Tây: chỉ phục hồi tên Latin khi rõ là tên Tây, còn tên Á vẫn giữ Hán Việt.
 - Phân loại entity: `Person`, `Location`, `Faction`, `Artifact`, `Skill`, `Title`, `Creature`.
 - Xuất nội dung cho `Names.txt` và `Names2.txt`.
-- Tự format tên có dấu chấm giữa để QuickTranslator hiểu được. Ví dụ `洞冥·旋风杀` sẽ được xuất thành `洞冥 · 旋风杀`.
+- Tự format tên có dấu chấm giữa hoặc gạch ngang để QuickTranslator hiểu được. Ví dụ `洞冥·旋风杀` sẽ được xuất thành `洞冥 · 旋风杀`.
 - Chia raw text dài thành chunk có overlap.
 - Hỗ trợ nhiều Gemini API key và xoay key theo request.
 - Có retry, backoff khi rate limit, timeout, và tự tách đôi chunk khi request timeout.
@@ -59,23 +59,28 @@ npm run typecheck
 
 1. Dán raw text truyện Trung hoặc tải file `.txt`.
 2. Thêm ít nhất một Gemini API key.
-3. Chọn model, tier, kiểu truyện, độ phủ, cỡ chunk, số request song song, số lần retry và timeout.
+3. Chọn model, quota, kiểu truyện, độ phủ, cỡ chunk, số request song song, số lần retry và timeout.
 4. Bấm `Trích xuất`.
 5. Kiểm tra bảng kết quả, lọc/sort nếu cần.
 6. Copy hoặc tải `Names.txt` / `Names2.txt`.
 
 Xem hướng dẫn đầy đủ tại [docs/USAGE.md](docs/USAGE.md).
 
-## API key, free tier và billing
+## API key, quota và billing
 
 App có hỗ trợ xoay nhiều free API key. Cách này dùng được để test, chạy đoạn ngắn, hoặc tránh một key bị quota tạm thời. Nhưng với truyện dài, free tier vẫn bị giới hạn RPM/TPM/RPD thấp hơn, dễ chậm và dễ vấp quota.
 
+Setting `Quota` trong app dùng để điều tiết RPM/TPM/RPD theo quota thật của Gemini API key. Đây không phải gói trả phí của app:
+
+- `Free API`: dùng rate limit free tier.
+- `Paid Tier 1`: dùng rate limit Tier 1 sau khi project đã bật billing.
+
 Khuyến nghị model:
 
-- Dùng `Gemini 3.1 Flash` nếu bạn đang chạy bằng free key.
-- Dùng `Gemini 3.1 Flash Lite` nếu bạn đã setup billing và chạy Tier 1.
+- Dùng `Gemini 3.1 Flash` nếu bạn đang chạy bằng Free API key.
+- Dùng `Gemini 3.1 Flash Lite` nếu bạn đã setup billing và chạy Paid Tier 1.
 
-Nếu dùng nghiêm túc, nên setup billing và dùng key Tier 1:
+Nếu dùng nghiêm túc, nên setup billing và dùng key Paid Tier 1:
 
 - Rate limit cao hơn.
 - Chạy truyện dài ổn định hơn.
@@ -95,7 +100,7 @@ Repo này có bảng giá mẫu trong app để ước lượng chi phí. Đây 
 | Gemini 2.5 Flash | $0.30 | $2.50 |
 | Gemini 2.5 Flash Lite | $0.10 | $0.40 |
 
-Free tier hiển thị phí `$0` trong app vì request free-tier không bị tính tiền, nhưng free tier có limit thấp hơn và phù hợp nhất cho test hoặc workload nhỏ.
+Free API hiển thị phí `$0` trong app vì request free-tier không bị tính tiền, nhưng free tier có limit thấp hơn và phù hợp nhất cho test hoặc workload nhỏ. Token trong app là ước lượng theo tài liệu Gemini cho text, khoảng 4 ký tự cho 1 token; số thực tế có thể lệch theo tokenizer/model.
 
 ## Tài liệu
 

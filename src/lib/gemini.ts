@@ -84,8 +84,8 @@ export const DEFAULT_MODEL_ID = 'gemini-3.1-flash-lite';
 export const GEMINI_TEXT_CHARS_PER_TOKEN = 4;
 export const PROMPT_OVERHEAD_TOKENS = 260;
 export const TIER_OPTIONS = [
-  { id: 'free', label: 'Miễn phí' },
-  { id: 'tier1', label: 'Tier 1' },
+  { id: 'free', label: 'Free API' },
+  { id: 'tier1', label: 'Paid Tier 1' },
  ] as const;
 export type TierId = (typeof TIER_OPTIONS)[number]['id'];
 export const DEFAULT_TIER_ID = TIER_OPTIONS[0].id;
