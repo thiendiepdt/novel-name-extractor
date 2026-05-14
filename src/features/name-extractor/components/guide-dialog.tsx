@@ -32,7 +32,7 @@ export function GuideDialog({ estimate, tiers, onClose }: GuideDialogProps) {
             <GuideSection title="Cách dùng nhanh">
               <GuideList items={[
                 'Dán raw text tiếng Trung hoặc tải file .txt.',
-                'Chọn kiểu truyện: Đông phương dùng Hán Việt, Tây phương ưu tiên tên Latin tự nhiên.',
+                'Chọn kiểu truyện: Đông phương dùng Hán Việt; Tây phương chỉ dùng tên Latin khi rõ là tên Tây, còn tên Á vẫn dùng Hán Việt.',
                 'Chọn độ phủ Cao nếu muốn bắt nhiều tên phụ; Cân bằng nếu muốn ít nhiễu hơn.',
                 'Bấm Trích xuất, kiểm tra bảng kết quả, rồi copy hoặc tải Names.txt / Names2.txt.',
                 'Nếu bị lỗi mà raw text, model và settings chưa đổi, bấm Thử lại từ lỗi để chạy tiếp các chunk còn thiếu.',
