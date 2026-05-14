@@ -46,6 +46,11 @@ Nhiều key sẽ được xoay vòng theo request. Điều này giúp khi một 
 
 Chọn Gemini model ở thanh trên cùng. Với tác vụ trích xuất tên, các model nhanh/lite thường đã đủ. Model đắt hơn không phải lúc nào cũng tốt hơn cho bài toán này.
 
+Khuyến nghị:
+
+- Nếu dùng free key, chọn `Gemini 3.1 Flash`.
+- Nếu đã setup billing và dùng Tier 1, chọn `Gemini 3.1 Flash Lite`.
+
 ### Kiểu truyện
 
 - `Đông phương`: output Hán Việt tiếng Việt có dấu.
