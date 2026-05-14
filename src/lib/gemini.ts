@@ -81,6 +81,7 @@ export const MODEL_OPTIONS = [
  ] as const;
 export type ModelId = (typeof MODEL_OPTIONS)[number]['id'];
 export const DEFAULT_MODEL_ID = 'gemini-3.1-flash-lite';
+export const GEMINI_TEXT_CHARS_PER_TOKEN = 4;
 export const PROMPT_OVERHEAD_TOKENS = 260;
 export const TIER_OPTIONS = [
   { id: 'free', label: 'Miễn phí' },
@@ -168,19 +169,11 @@ export function getModelPricing(modelId: string, tierId: TierId = DEFAULT_TIER_I
 }
 
 export function estimateTokens(text: string) {
-  let tokens = 0;
-  for (const char of text || '') {
-    if (/[\u3400-\u9fff]/.test(char)) {
-      tokens += 1;
-    } else if (/\s/.test(char)) {
-      tokens += 0.15;
-    } else if (/[\u3040-\u30ff\uac00-\ud7af]/.test(char)) {
-      tokens += 0.8;
-    } else {
-      tokens += 0.25;
-    }
-  }
-  return Math.ceil(tokens);
+  return estimateTokensFromCharCount(Array.from(text || '').length);
+}
+
+export function estimateTokensFromCharCount(charCount: number) {
+  return Math.ceil(Math.max(0, charCount) / GEMINI_TEXT_CHARS_PER_TOKEN);
 }
 
 export function estimateUsage({
