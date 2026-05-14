@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 30% 6%;
+    --foreground: 195 28% 94%;
+    --card: 210 27% 10%;
+    --card-foreground: 195 28% 94%;
+    --primary: 169 65% 46%;
+    --primary-foreground: 168 60% 6%;
+    --secondary: 211 29% 15%;
+    --secondary-foreground: 195 28% 94%;
+    --muted: 211 28% 16%;
+    --muted-foreground: 208 13% 64%;
+    --accent: 210 25% 18%;
+    --accent-foreground: 195 28% 94%;
+    --destructive: 352 100% 71%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 210 18% 20%;
+    --input: 210 18% 22%;
+    --ring: 169 65% 46%;
+    --radius: 0.5rem;
+  }
+
+  * {
+    @apply border-border;
+    scrollbar-color: hsl(210 10% 44%) hsl(210 20% 12%);
+    scrollbar-width: thin;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: hsl(210 20% 12%);
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: hsl(210 10% 44%);
+    border: 2px solid hsl(210 20% 12%);
+    border-radius: 999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: hsl(210 9% 55%);
+  }
+}
+
+@media (max-width: 1100px) {
+  body {
+    overflow: auto;
+  }
+
+  #root > div {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  header,
+  main,
+  section {
+    grid-template-columns: 1fr !important;
+  }
+
+  main > section {
+    min-height: 420px;
+  }
+}

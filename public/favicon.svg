@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#0b1117"/>
+  <path d="M45 7l2.9 8.1L56 18l-8.1 2.9L45 29l-2.9-8.1L34 18l8.1-2.9L45 7zM20 10l1.8 5.2L27 17l-5.2 1.8L20 24l-1.8-5.2L13 17l5.2-1.8L20 10z" fill="#2ec7ad"/>
+  <text x="32" y="47" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="31" font-weight="700" fill="#f8fafc">名</text>
+</svg>
