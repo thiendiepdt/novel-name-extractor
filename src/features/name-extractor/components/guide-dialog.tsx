@@ -15,11 +15,11 @@ type GuideDialogProps = {
 export function GuideDialog({ estimate, tiers, onClose }: GuideDialogProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-3 text-foreground">
-      <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl">
+      <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl">
         <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
           <div className="min-w-0">
-            <h2 className="truncate text-base font-semibold">Hướng Dẫn Sử Dụng</h2>
-            <p className="text-xs text-muted-foreground">Workflow, thuật ngữ, retry, API key và ước lượng phí.</p>
+            <h2 className="truncate text-lg font-semibold">Hướng Dẫn Sử Dụng</h2>
+            <p className="text-sm text-muted-foreground">Workflow, thuật ngữ, retry, API key và ước lượng phí.</p>
           </div>
           <Button variant="secondary" onClick={onClose}>
             <X className="h-4 w-4" />
@@ -27,12 +27,13 @@ export function GuideDialog({ estimate, tiers, onClose }: GuideDialogProps) {
           </Button>
         </div>
 
-        <div className="min-h-0 overflow-auto p-4">
-          <div className="grid gap-4 lg:grid-cols-2">
+        <div className="min-h-0 overflow-y-auto overflow-x-hidden p-4">
+          <div className="grid min-w-0 gap-4">
             <GuideSection title="Cách dùng nhanh">
               <GuideList items={[
                 'Dán raw text tiếng Trung hoặc tải file .txt.',
                 'Chọn kiểu truyện: Đông phương dùng Hán Việt; Tây phương chỉ dùng tên Latin khi rõ là tên Tây, còn tên Á vẫn dùng Hán Việt.',
+                'Chọn Quota theo quota thật của Gemini API key: Free API hoặc Paid Tier 1. Đây không phải gói trả phí của app.',
                 'Chọn độ phủ Cao nếu muốn bắt nhiều tên phụ; Cân bằng nếu muốn ít nhiễu hơn.',
                 'Bấm Trích xuất, kiểm tra bảng kết quả, rồi copy hoặc tải Names.txt / Names2.txt.',
                 'Nếu bị lỗi mà raw text, model và settings chưa đổi, bấm Thử lại từ lỗi để chạy tiếp các chunk còn thiếu.',
@@ -51,7 +52,7 @@ export function GuideDialog({ estimate, tiers, onClose }: GuideDialogProps) {
 
             <GuideSection title="Best practice">
               <GuideList items={[
-                'Free tier: để Song song 1-2, Cỡ chunk khoảng 8000, Lặp lại 300-500.',
+                'Free API: để Song song 1-2, Cỡ chunk khoảng 8000, Lặp lại 300-500.',
                 'Truyện dài: chia theo tập hoặc vài trăm chương nếu trình duyệt yếu.',
                 'Nếu kết quả thiếu tên phụ, chạy Độ phủ Cao; nếu quá nhiều cụm mơ hồ, chuyển Cân bằng.',
                 'Giữ raw text và settings không đổi khi retry để app có thể resume đúng phần fail.',
@@ -65,37 +66,35 @@ export function GuideDialog({ estimate, tiers, onClose }: GuideDialogProps) {
                 'Key hết quota hoặc sai quyền: xóa key lỗi, thêm key khác rồi bấm Thử lại từ lỗi.',
                 'JSON không hợp lệ: app tự retry theo cấu hình Thử lại; nếu vẫn fail, bấm retry lại chunk đó.',
                 'Input đã đổi sau khi lỗi: app sẽ chạy lại từ đầu vì chunk cũ không còn khớp.',
-                'Muốn ổn định hơn: gắn billing để lên Tier 1, tăng quota và giảm lỗi giới hạn.',
+                'Muốn ổn định hơn: gắn billing để dùng Paid Tier 1, tăng quota và giảm lỗi giới hạn.',
               ]} />
             </GuideSection>
-          </div>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-            <GuideSection title="API key và tier">
+            <GuideSection title="API key và quota">
               <GuideList items={[
                 'Thêm nhiều key: app sẽ xoay vòng key theo từng chunk/request.',
-                'Rate limit trong app vẫn được điều tiết theo tier đang chọn, nên chọn đúng Free hoặc Tier 1.',
+                'Rate limit trong app được điều tiết theo Quota đang chọn, nên chọn đúng Free API hoặc Paid Tier 1.',
                 'Nhiều key giúp tiếp tục khi một key lỗi hoặc hết quota, nhưng không thay thế billing cho workload lớn.',
-                'Free phù hợp test hoặc truyện ngắn. Tier 1 phù hợp chạy truyện dài, song song cao và ít phải canh quota.',
+                'Free API phù hợp test hoặc truyện ngắn. Paid Tier 1 phù hợp chạy truyện dài, song song cao và ít phải canh quota.',
               ]} />
-              <div className="mt-3 overflow-hidden rounded-md border border-border">
-                <table className="w-full text-left text-xs">
+              <div className="mt-3 overflow-x-auto rounded-md border border-border">
+                <table className="min-w-[44rem] w-full text-left text-sm">
                   <thead className="bg-muted text-muted-foreground">
                     <tr>
-                      <th className="px-3 py-2">Tier</th>
+                      <th className="whitespace-nowrap px-3 py-2">Quota</th>
                       {MODEL_OPTIONS.map((model) => (
-                        <th key={model.id} className="px-3 py-2">{model.shortLabel}</th>
+                        <th key={model.id} className="whitespace-nowrap px-3 py-2">{model.shortLabel}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {tiers.map((tier) => (
                       <tr key={tier.id} className="border-t border-border">
-                        <td className="px-3 py-2 font-medium text-foreground">{tier.label}</td>
+                        <td className="whitespace-nowrap px-3 py-2 font-medium text-foreground">{tier.label}</td>
                         {MODEL_OPTIONS.map((model) => {
                           const limits = getRateLimits(model.id, tier.id);
                           return (
-                            <td key={model.id} className="px-3 py-2 font-mono">
+                            <td key={model.id} className="whitespace-nowrap px-3 py-2 font-mono">
                               {limits.rpm.toLocaleString()} RPM / {compactNumber(limits.tpm)} TPM / {compactNumber(limits.rpd)} RPD
                             </td>
                           );
@@ -116,25 +115,25 @@ export function GuideDialog({ estimate, tiers, onClose }: GuideDialogProps) {
                 <GuideMetric label="Token ra" value={`~${estimate.outputTokens.toLocaleString()}`} />
                 <GuideMetric label="Tổng phí" value={`~${formatUsd(estimate.totalCost)}`} />
               </div>
-              <p className="mt-3 text-xs leading-5 text-muted-foreground">
-                Free tier dùng quota miễn phí nên phù hợp test nhỏ, nhưng dễ chạm giới hạn. Khi gắn billing để lên Tier 1,
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                Free API dùng quota miễn phí nên phù hợp test nhỏ, nhưng dễ chạm giới hạn. Khi gắn billing để dùng Paid Tier 1,
                 phí ước tính = token input x giá input + token output x giá output của model. Output thực tế có thể lệch theo số tên Gemini trả về.
               </p>
-              <div className="mt-3 overflow-hidden rounded-md border border-border">
-                <table className="w-full text-left text-xs">
+              <div className="mt-3 overflow-x-auto rounded-md border border-border">
+                <table className="min-w-[32rem] w-full text-left text-sm">
                   <thead className="bg-muted text-muted-foreground">
                     <tr>
-                      <th className="px-3 py-2">Model</th>
-                      <th className="px-3 py-2">Input paid</th>
-                      <th className="px-3 py-2">Output paid</th>
+                      <th className="whitespace-nowrap px-3 py-2">Model</th>
+                      <th className="whitespace-nowrap px-3 py-2">Input paid</th>
+                      <th className="whitespace-nowrap px-3 py-2">Output paid</th>
                     </tr>
                   </thead>
                   <tbody>
                     {MODEL_OPTIONS.map((model) => (
                       <tr key={model.id} className="border-t border-border">
-                        <td className="px-3 py-2 font-medium text-foreground">{model.label}</td>
-                        <td className="px-3 py-2 font-mono">${model.inputUsdPerMillion}/1M</td>
-                        <td className="px-3 py-2 font-mono">${model.outputUsdPerMillion}/1M</td>
+                        <td className="whitespace-nowrap px-3 py-2 font-medium text-foreground">{model.label}</td>
+                        <td className="whitespace-nowrap px-3 py-2 font-mono">${model.inputUsdPerMillion}/1M</td>
+                        <td className="whitespace-nowrap px-3 py-2 font-mono">${model.outputUsdPerMillion}/1M</td>
                       </tr>
                     ))}
                   </tbody>
@@ -150,8 +149,8 @@ export function GuideDialog({ estimate, tiers, onClose }: GuideDialogProps) {
 
 function GuideSection({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded-md border border-border bg-background/60 p-3">
-      <h3 className="mb-2 text-sm font-semibold">{title}</h3>
+    <section className="min-w-0 rounded-md border border-border bg-background/60 p-4">
+      <h3 className="mb-3 text-base font-semibold">{title}</h3>
       {children}
     </section>
   );
@@ -159,7 +158,7 @@ function GuideSection({ title, children }: { title: string; children: ReactNode 
 
 function GuideList({ items }: { items: string[] }) {
   return (
-    <ul className="grid gap-1.5 text-xs leading-5 text-muted-foreground">
+    <ul className="grid gap-2 text-sm leading-6 text-muted-foreground">
       {items.map((item) => (
         <li key={item} className="grid grid-cols-[0.75rem_minmax(0,1fr)] gap-1">
           <span aria-hidden="true">-</span>
@@ -173,8 +172,8 @@ function GuideList({ items }: { items: string[] }) {
 function GuideMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded border border-border bg-card px-2.5 py-1.5">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <strong className="text-right font-mono text-xs text-foreground">{value}</strong>
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <strong className="text-right font-mono text-sm text-foreground">{value}</strong>
     </div>
   );
 }

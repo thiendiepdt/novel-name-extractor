@@ -65,6 +65,8 @@ type ExtractionSettings = {
 };
 ```
 
+`tierId` là tên internal cũ, nhưng UI hiển thị là `Quota`. Giá trị này điều tiết RPM/TPM/RPD theo quota thật của Gemini API key (`Free API` hoặc `Paid Tier 1`), không đại diện cho gói trả phí của app.
+
 ## Chunking
 
 `splitIntoChunks` cắt raw text theo `chunkSize` và giữ lại `chunkOverlap` ký tự giữa hai chunk liền kề. Khi có thể, hàm sẽ cố cắt ở ranh giới tự nhiên như xuống dòng hoặc dấu câu tiếng Trung.
@@ -81,7 +83,7 @@ Overlap quan trọng vì tên riêng có thể nằm ở ranh giới chunk. Các
 4. Gửi request.
 5. Lưu chunk result hoặc fail run kèm resumable state.
 
-App xoay API key và cooldown key khi gặp `429`. Cách này giúp xử lý limit tạm thời, nhưng với workload dài người dùng vẫn nên dùng Tier 1.
+App xoay API key và cooldown key khi gặp `429`. Cách này giúp xử lý limit tạm thời, nhưng với workload dài người dùng vẫn nên dùng Paid Tier 1.
 
 ## Retry behavior
 
@@ -126,7 +128,7 @@ Nếu run lỗi, các chunk đã hoàn thành được giữ trong component sta
 Prompt yêu cầu Gemini trả đúng một JSON object theo schema ổn định. Prompt có rule riêng cho:
 
 - Truyện Đông phương/tiên hiệp dùng Hán Việt.
-- Truyện Tây phương dùng Latin-style output.
+- Truyện Tây phương hoặc mixed Đông/Tây: chỉ dùng Latin-style output khi tên rõ là Western/foreign và có thể phục hồi; tên Trung/Á, tu tiên, tông môn, cảnh giới hoặc ambiguous vẫn dùng Hán Việt.
 - High recall mode.
 - Balanced mode.
 - Description bật hoặc tắt.
@@ -151,6 +153,19 @@ Ví dụ:
 
 Cách này giữ exact raw-text matching cho occurrence count.
 
+Export cũng normalize khoảng trắng quanh các dạng gạch ngang phổ biến để QuickTranslator đọc tên ghép ổn định hơn.
+
+## Safety settings
+
+Request `generateContent` truyền `safetySettings` với threshold `OFF` cho các adjustable categories:
+
+- `HARM_CATEGORY_HARASSMENT`
+- `HARM_CATEGORY_HATE_SPEECH`
+- `HARM_CATEGORY_SEXUALLY_EXPLICIT`
+- `HARM_CATEGORY_DANGEROUS_CONTENT`
+
+Google vẫn có các core harm protections không chỉnh được, nên response vẫn có thể bị block bởi policy/core safety.
+
 ## Storage
 
 App dùng browser local storage qua `useStoredState` và `useStoredJsonState`.
@@ -168,6 +183,8 @@ Vì API key được lưu trong local storage, nên app nên được xem là lo
 ## Pricing và cost estimate
 
 `estimateUsage` ước lượng input/output token và nhân với giá model trong `MODEL_OPTIONS`.
+
+Input/output text token estimate dùng approximation từ tài liệu Gemini: khoảng 4 ký tự cho 1 token. Số chính xác cần `countTokens` hoặc `usageMetadata`, nhưng app hiện chỉ dùng estimate để hiển thị phí và spacing TPM.
 
 Giá trong source là giá mẫu để app estimate. Giá thực tế của Google có thể thay đổi. Tài liệu public nên link trang Gemini pricing chính thức:
 

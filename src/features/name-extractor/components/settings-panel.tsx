@@ -70,7 +70,7 @@ export function SettingsPanel({
           onChange={(value) => onSettingChange('nameStyle', value)}
         />
         <SegmentedSetting
-          label="Gói"
+          label="Quota"
           options={TIER_OPTIONS.map((tier) => ({ label: tier.label, value: tier.id }))}
           value={normalizedSettings.tierId}
           disabled={busy}
