@@ -1,3 +1,5 @@
+import hauTuRaw from '@/features/name-extractor/data/hau-tu.txt?raw';
+
 export type Category = 'Person' | 'Location' | 'Faction' | 'Artifact' | 'Skill' | 'Title' | 'Creature';
 export type NameStyle = 'eastern' | 'western';
 export type RecallMode = 'high' | 'balanced';
@@ -121,6 +123,7 @@ const FREE_TIER_REQUEST_TIMEOUT_MS = 30000;
 const MIN_REQUEST_TIMEOUT_SECONDS = 5;
 const MAX_REQUEST_TIMEOUT_SECONDS = 180;
 const MIN_TIMEOUT_SPLIT_CHARS = 1200;
+const LOWERCASE_HANVIET_SUFFIXES = parseLowercaseHanvietSuffixes(hauTuRaw);
 const MIN_POLICY_BLOCK_SPLIT_CHARS = 500;
 const GEMINI_SAFETY_SETTINGS_OFF = [
   { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'OFF' },
@@ -892,7 +895,7 @@ function normalizeRowItem(item: unknown): NameRow {
 
   return {
     chinese: String(record.chinese || record.name || '').trim(),
-    hanviet: titleCaseWords(String(record.hanviet || record.hanViet || '').trim()),
+    hanviet: formatHanvietName(String(record.hanviet || record.hanViet || '').trim()),
     category,
     description: String(record.description || '').trim(),
     count: Math.max(1, Number.parseInt(String(record.count || record.frequency || 1), 10) || 1),
@@ -916,6 +919,44 @@ function titleCaseWords(value: string) {
     .filter(Boolean)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ');
+}
+
+function formatHanvietName(value: string) {
+  return applyLowercaseHanvietSuffix(titleCaseWords(value));
+}
+
+function applyLowercaseHanvietSuffix(value: string) {
+  const words = value.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return '';
+
+  const lowerWords = words.map((word) => word.toLocaleLowerCase('vi'));
+  for (const suffix of LOWERCASE_HANVIET_SUFFIXES) {
+    if (suffix.words.length > words.length) continue;
+    const start = words.length - suffix.words.length;
+    const matches = suffix.words.every((word, index) => lowerWords[start + index] === word);
+    if (!matches) continue;
+    if (start === 0) return [words[0], ...suffix.words.slice(1)].join(' ');
+    return [...words.slice(0, start), ...suffix.words].join(' ');
+  }
+
+  return words.join(' ');
+}
+
+function parseLowercaseHanvietSuffixes(raw: string) {
+  const suffixes = new Map<string, string[]>();
+
+  for (const rawLine of raw.split(/\r?\n/)) {
+    const line = rawLine.replace(/^\uFEFF/, '').trim();
+    if (!line || line.startsWith('#')) continue;
+    const [, value = line] = line.split('=');
+    const text = value.replace(/\s+/g, ' ').trim().toLocaleLowerCase('vi');
+    if (!text) continue;
+    suffixes.set(text, text.split(' '));
+  }
+
+  return [...suffixes.entries()]
+    .map(([text, words]) => ({ text, words }))
+    .sort((a, b) => b.words.length - a.words.length || b.text.length - a.text.length);
 }
 
 function isModelId(value: string): value is ModelId {
