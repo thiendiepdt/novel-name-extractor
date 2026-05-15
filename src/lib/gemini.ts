@@ -935,6 +935,7 @@ function applyLowercaseHanvietSuffix(value: string) {
     const start = words.length - suffix.words.length;
     const matches = suffix.words.every((word, index) => lowerWords[start + index] === word);
     if (!matches) continue;
+    if (start === 0) return [words[0], ...suffix.words.slice(1)].join(' ');
     return [...words.slice(0, start), ...suffix.words].join(' ');
   }
 
