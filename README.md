@@ -10,7 +10,7 @@ AI Name Extractor là công cụ chạy trên trình duyệt để trích xuất
 
 - Trích xuất entity tiếng Trung thành dòng `Tên Trung=Tên hiển thị tiếng Việt`.
 - Hỗ trợ truyện Đông phương/tiên hiệp với Hán Việt có dấu.
-- Hỗ trợ truyện Tây phương hoặc lai Đông/Tây: chỉ phục hồi tên Latin khi rõ là tên Tây, còn tên Á vẫn giữ Hán Việt.
+- Hỗ trợ truyện quốc tế hoặc lai nhiều bối cảnh: tên nước ngoài giữ phiên âm/spelling gốc khi rõ, còn tên Hán/tu tiên vẫn giữ Hán Việt.
 - Phân loại entity: `Person`, `Location`, `Faction`, `Artifact`, `Skill`, `Title`, `Creature`.
 - Xuất nội dung cho `Names.txt` và `Names2.txt`.
 - Tự format tên có dấu chấm giữa hoặc gạch ngang để QuickTranslator hiểu được. Ví dụ `洞冥·旋风杀` sẽ được xuất thành `洞冥 · 旋风杀`.

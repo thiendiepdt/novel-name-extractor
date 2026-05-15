@@ -54,7 +54,7 @@ Khuyến nghị:
 ### Kiểu truyện
 
 - `Đông phương`: output Hán Việt tiếng Việt có dấu.
-- `Tây phương`: chỉ dùng tên Western/Latin khi rõ là tên Tây hoặc tên ngoại quốc có thể phục hồi từ ngữ cảnh. Tên Trung/Á, tu tiên, tông môn, cảnh giới hoặc tên không rõ Tây vẫn dùng Hán Việt có dấu.
+- `Quốc tế`: giữ tên nước ngoài theo phiên âm/spelling gốc khi có thể phục hồi từ ngữ cảnh, ví dụ tên Anh/Âu, Nhật, Hàn. Tên Hán, tu tiên, tông môn, cảnh giới hoặc tên không rõ là ngoại quốc vẫn dùng Hán Việt có dấu.
 
 ### Quota
 

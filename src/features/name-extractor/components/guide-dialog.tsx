@@ -32,7 +32,7 @@ export function GuideDialog({ estimate, tiers, onClose }: GuideDialogProps) {
             <GuideSection title="Cách dùng nhanh">
               <GuideList items={[
                 'Dán raw text tiếng Trung hoặc tải file .txt.',
-                'Chọn kiểu truyện: Đông phương dùng Hán Việt; Tây phương chỉ dùng tên Latin khi rõ là tên Tây, còn tên Á vẫn dùng Hán Việt.',
+                'Chọn kiểu truyện: Đông phương dùng Hán Việt; Quốc tế giữ tên nước ngoài theo phiên âm/spelling gốc khi rõ, còn tên Hán/tu tiên vẫn dùng Hán Việt.',
                 'Chọn Quota theo quota thật của Gemini API key: Free API hoặc Paid Tier 1. Đây không phải gói trả phí của app.',
                 'Chọn độ phủ Cao nếu muốn bắt nhiều tên phụ; Cân bằng nếu muốn ít nhiễu hơn.',
                 'Bấm Trích xuất, kiểm tra bảng kết quả, rồi copy hoặc tải Names.txt / Names2.txt.',
