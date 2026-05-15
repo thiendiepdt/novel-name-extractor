@@ -761,12 +761,13 @@ function buildPrompt(
 ) {
   const romanizationRule = nameStyle === 'western'
     ? [
-      '- This text may be Western fantasy, mixed Eastern/Western fantasy, or Chinese translation of foreign names.',
-      '- The "hanviet" field is a Vietnamese display name, not always English/Latin.',
-      '- For clearly Western/foreign names, output the natural Western/Latin name only when recoverable from common usage or context, e.g. 阿瑟 -> Arthur, 梅林 -> Merlin, 罗兰 -> Roland.',
-      '- If a name is Chinese/East Asian, xianxia-style, sect/title/realm-style, or not clearly Western/foreign, use Vietnamese Sino-reading with full Vietnamese diacritics.',
-      '- If the exact Western spelling is uncertain and the name could be East Asian, prefer Vietnamese Sino-reading instead of forcing an English/Latin guess.',
-      '- Never convert every name to English. Mixed stories can contain both Western names and East Asian names.',
+      '- This text may contain international names from Western, Japanese, Korean, Chinese, or mixed settings.',
+      '- The "hanviet" field is a Vietnamese display name, not always English.',
+      '- For clearly non-Chinese foreign names, output the natural original-language Latin spelling/transliteration when recoverable from common usage or context.',
+      '- Preserve the name language instead of converting everything to English. Examples: 阿瑟 -> Arthur, 梅林 -> Merlin, 德川 -> Tokuda/Tokugawa when context supports it, 樱/樱花 as a Japanese name -> Sakura.',
+      '- For Chinese/East Asian names that are Chinese, xianxia-style, sect/title/realm-style, or not clearly foreign, use Vietnamese Sino-reading with full Vietnamese diacritics.',
+      '- If the exact foreign spelling is uncertain and the name could be Chinese, prefer Vietnamese Sino-reading instead of forcing an English guess.',
+      '- Never convert every name to English. International stories can contain names from multiple languages.',
     ]
     : [
       '- This text is Eastern/Chinese fantasy. The "hanviet" field must be Vietnamese Sino-reading with full Vietnamese diacritics, title case with spaces.',

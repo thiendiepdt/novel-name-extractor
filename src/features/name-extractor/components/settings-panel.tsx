@@ -63,7 +63,7 @@ export function SettingsPanel({
           label="Kiểu truyện"
           options={[
             { label: 'Đông phương', value: 'eastern' },
-            { label: 'Tây phương', value: 'western' },
+            { label: 'Quốc tế', value: 'western' },
           ]}
           value={normalizedSettings.nameStyle}
           disabled={busy}
