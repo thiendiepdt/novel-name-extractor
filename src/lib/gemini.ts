@@ -764,6 +764,8 @@ function buildPrompt(
       '- This text may contain international names from Western, Japanese, Korean, Chinese, or mixed settings.',
       '- The "hanviet" field is a Vietnamese display name, not always English.',
       '- For clearly non-Chinese foreign names, output the natural original-language Latin spelling/transliteration when recoverable from common usage or context.',
+      '- For Japanese personal names, use common Hepburn-style romanization, not Vietnamese Sino-reading. If the text contains Japanese surnames/given names such as 夏目, 藤原, 近藤, 西園寺, 雪村, 月島, 酒井, 堀川, 安井, 中島, 山本, 福田, 秋田, 山口, 東野, 御堂, 大西, 千景, 琉璃, 葵, 美雪, 七瀨, 鈴音, 未希, 凜, 紫苑, 佳織, 雅介, 亮鬥, 悟史, 康司, 司, 紗奈, 博太, 惠子, 智彥, 圭吾, 織姬, output Japanese-style romanization consistently.',
+      '- Do not mix Japanese romanization and Vietnamese Sino-reading for names from the same Japanese context. Prefer Natsume Chikage over Hạ Mục Thiên Cảnh, Fujiwara Aoi over Đằng Nguyên Quỳ, Kondo Miyuki over Cận Đằng Mỹ Tuyết, Tsukishima Rin over Nguyệt Đảo Lẫm.',
       '- Preserve the name language instead of converting everything to English. Examples: 阿瑟 -> Arthur, 梅林 -> Merlin, 德川 -> Tokuda/Tokugawa when context supports it, 樱/樱花 as a Japanese name -> Sakura.',
       '- For Chinese/East Asian names that are Chinese, xianxia-style, sect/title/realm-style, or not clearly foreign, use Vietnamese Sino-reading with full Vietnamese diacritics.',
       '- If the exact foreign spelling is uncertain and the name could be Chinese, prefer Vietnamese Sino-reading instead of forcing an English guess.',

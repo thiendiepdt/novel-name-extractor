@@ -128,7 +128,7 @@ Nếu run lỗi, các chunk đã hoàn thành được giữ trong component sta
 Prompt yêu cầu Gemini trả đúng một JSON object theo schema ổn định. Prompt có rule riêng cho:
 
 - Truyện Đông phương/tiên hiệp dùng Hán Việt.
-- Truyện Quốc tế hoặc mixed nhiều bối cảnh: giữ tên nước ngoài theo original-language Latin spelling/transliteration khi rõ và có thể phục hồi; tên Trung/Hán, tu tiên, tông môn, cảnh giới hoặc ambiguous vẫn dùng Hán Việt.
+- Truyện Quốc tế hoặc mixed nhiều bối cảnh: giữ tên nước ngoài theo original-language Latin spelling/transliteration khi rõ và có thể phục hồi; ngữ cảnh Nhật ưu tiên Hepburn-style romanization nhất quán; tên Trung/Hán, tu tiên, tông môn, cảnh giới hoặc ambiguous vẫn dùng Hán Việt.
 - High recall mode.
 - Balanced mode.
 - Description bật hoặc tắt.
