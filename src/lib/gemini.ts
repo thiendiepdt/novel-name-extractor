@@ -1,7 +1,9 @@
+import hanVietRaw from '@/features/name-extractor/data/han-viet.txt?raw';
 import hauTuRaw from '@/features/name-extractor/data/hau-tu.txt?raw';
 
 export type Category = 'Person' | 'Location' | 'Faction' | 'Artifact' | 'Skill' | 'Title' | 'Creature';
 export type NameStyle = 'eastern' | 'western';
+export type NameReading = 'hanviet' | 'foreign';
 export type RecallMode = 'high' | 'balanced';
 export type DescriptionMode = 'full' | 'none';
 export type RateLimitValue = number | '*';
@@ -9,6 +11,7 @@ export type RateLimitValue = number | '*';
 export type NameRow = {
   chinese: string;
   hanviet: string;
+  reading?: NameReading;
   category: Category;
   description: string;
   count: number;
@@ -123,6 +126,7 @@ const FREE_TIER_REQUEST_TIMEOUT_MS = 30000;
 const MIN_REQUEST_TIMEOUT_SECONDS = 5;
 const MAX_REQUEST_TIMEOUT_SECONDS = 180;
 const MIN_TIMEOUT_SPLIT_CHARS = 1200;
+const HAN_VIET_MAP = parseHanVietMap(hanVietRaw);
 const LOWERCASE_HANVIET_SUFFIXES = parseLowercaseHanvietSuffixes(hauTuRaw);
 const MIN_POLICY_BLOCK_SPLIT_CHARS = 500;
 const GEMINI_SAFETY_SETTINGS_OFF = [
@@ -661,7 +665,7 @@ async function extractChunk(
   const data = await response.json();
   const text = getGeminiResponseText(data, index, total);
   try {
-    return normalizeRows(parseJsonPayload(text));
+    return normalizeRows(parseJsonPayload(text), nameStyle);
   } catch (parseError) {
     const geminiError = toGeminiError(parseError);
     geminiError.retryable = true;
@@ -766,6 +770,7 @@ function buildPrompt(
     ? [
       '- This text may contain international names from Western, Japanese, Korean, Chinese, or mixed settings.',
       '- The "hanviet" field is a Vietnamese display name, not always English.',
+      '- Set "reading" to "hanviet" only for Chinese names/entities that should use Vietnamese Sino-reading; set it to "foreign" for English, Japanese, Korean, Western, or other non-Chinese names.',
       '- For clearly non-Chinese foreign names, output the natural original-language Latin spelling/transliteration when recoverable from common usage or context.',
       '- For Japanese personal names, use common Hepburn-style romanization, not Vietnamese Sino-reading. If the text contains Japanese surnames/given names such as 夏目, 藤原, 近藤, 西園寺, 雪村, 月島, 酒井, 堀川, 安井, 中島, 山本, 福田, 秋田, 山口, 東野, 御堂, 大西, 千景, 琉璃, 葵, 美雪, 七瀨, 鈴音, 未希, 凜, 紫苑, 佳織, 雅介, 亮鬥, 悟史, 康司, 司, 紗奈, 博太, 惠子, 智彥, 圭吾, 織姬, output Japanese-style romanization consistently.',
       '- Do not mix Japanese romanization and Vietnamese Sino-reading for names from the same Japanese context. Prefer Natsume Chikage over Hạ Mục Thiên Cảnh, Fujiwara Aoi over Đằng Nguyên Quỳ, Kondo Miyuki over Cận Đằng Mỹ Tuyết, Tsukishima Rin over Nguyệt Đảo Lẫm.',
@@ -775,6 +780,7 @@ function buildPrompt(
       '- Never convert every name to English. International stories can contain names from multiple languages.',
     ]
     : [
+      '- Set "reading" to "hanviet" for every extracted entity.',
       '- This text is Eastern/Chinese fantasy. The "hanviet" field must be Vietnamese Sino-reading with full Vietnamese diacritics, title case with spaces.',
       '- Never output unaccented romanization for Eastern names. Bad: Truong Sinh Benh, Cuc De, Luu Vu. Good: Trường Sinh Bệnh, Cực Đế, Lưu Vũ.',
       '- Use common Vietnamese Sino-Vietnamese readings: 天=Thiên, 算=Toán, 老=Lão, 人=Nhân, 王=Vương, 国=Quốc, 山=Sơn, 海=Hải, 神=Thần, 风=Phong, 子=Tử.',
@@ -799,8 +805,8 @@ function buildPrompt(
     ];
   const includeDescription = descriptionMode !== 'none';
   const schema = includeDescription
-    ? 'Schema: {"names":[{"chinese":"中文原文","hanviet":"Vietnamese display name","category":"Person|Location|Faction|Artifact|Skill|Title|Creature","description":"short neutral Vietnamese description","count":estimated_occurrences_in_this_chunk}]}'
-    : 'Schema: {"names":[{"chinese":"中文原文","hanviet":"Vietnamese display name","category":"Person|Location|Faction|Artifact|Skill|Title|Creature","description":"","count":estimated_occurrences_in_this_chunk}]}';
+    ? 'Schema: {"names":[{"chinese":"中文原文","hanviet":"Vietnamese display name","reading":"hanviet|foreign","category":"Person|Location|Faction|Artifact|Skill|Title|Creature","description":"short neutral Vietnamese description","count":estimated_occurrences_in_this_chunk}]}'
+    : 'Schema: {"names":[{"chinese":"中文原文","hanviet":"Vietnamese display name","reading":"hanviet|foreign","category":"Person|Location|Faction|Artifact|Skill|Title|Creature","description":"","count":estimated_occurrences_in_this_chunk}]}';
   const descriptionRules = includeDescription
     ? [
       '- description must be concise Vietnamese, max 12 words.',
@@ -874,7 +880,7 @@ function extractFirstJsonObject(text: string) {
   return '';
 }
 
-function normalizeRows(payload: unknown): NameRow[] {
+function normalizeRows(payload: unknown, nameStyle: NameStyle): NameRow[] {
   const list = Array.isArray(payload)
     ? payload
     : isObjectWithNames(payload)
@@ -883,23 +889,126 @@ function normalizeRows(payload: unknown): NameRow[] {
   if (!Array.isArray(list)) return [];
 
   return list
-    .map((item) => normalizeRowItem(item))
-    .filter((item) => /[\u3400-\u9fff]/.test(item.chinese) && item.hanviet);
+    .map((item) => normalizeRowItem(item, nameStyle))
+    .filter((item) => containsHanChar(item.chinese) && item.hanviet);
 }
 
-function normalizeRowItem(item: unknown): NameRow {
+function normalizeRowItem(item: unknown, nameStyle: NameStyle): NameRow {
   const record = isRecord(item) ? item : {};
   const category = typeof record.category === 'string' && CATEGORIES.has(record.category as Category)
     ? record.category as Category
     : 'Person';
+  const chinese = String(record.chinese || record.name || '').trim();
+  const reading = normalizeNameReading(record, nameStyle);
+  const aiHanviet = formatHanvietName(String(record.hanviet || record.hanViet || '').trim());
+  const dictionaryHanviet = reading === 'hanviet' ? translateHanVietName(chinese) : '';
 
   return {
-    chinese: String(record.chinese || record.name || '').trim(),
-    hanviet: formatHanvietName(String(record.hanviet || record.hanViet || '').trim()),
+    chinese,
+    hanviet: dictionaryHanviet || aiHanviet,
+    reading,
     category,
     description: String(record.description || '').trim(),
     count: Math.max(1, Number.parseInt(String(record.count || record.frequency || 1), 10) || 1),
   };
+}
+
+function normalizeNameReading(record: Record<string, unknown>, nameStyle: NameStyle): NameReading {
+  if (nameStyle === 'eastern') return 'hanviet';
+
+  const rawValue = record.reading ??
+    record.nameReading ??
+    record.translationStyle ??
+    record.language ??
+    record.lang ??
+    record.isHanViet;
+  if (typeof rawValue === 'boolean') return rawValue ? 'hanviet' : 'foreign';
+
+  const value = String(rawValue || '').trim().toLowerCase();
+  if ([
+    'hanviet',
+    'han-viet',
+    'hán việt',
+    'han viet',
+    'sino',
+    'sino-vietnamese',
+    'chinese',
+    'zh',
+    'cn',
+  ].includes(value)) {
+    return 'hanviet';
+  }
+
+  return 'foreign';
+}
+
+function translateHanVietName(value: string) {
+  const tokens: string[] = [];
+  let hasHan = false;
+  let lastWasSeparator = false;
+
+  for (const char of Array.from(value.trim())) {
+    if (isHanChar(char)) {
+      const reading = HAN_VIET_MAP.get(char);
+      if (!reading) return '';
+      tokens.push(reading);
+      hasHan = true;
+      lastWasSeparator = false;
+      continue;
+    }
+
+    if (/\s/u.test(char)) continue;
+    if (isNameSeparator(char)) {
+      if (!hasHan || lastWasSeparator) continue;
+      tokens.push('·');
+      lastWasSeparator = true;
+      continue;
+    }
+
+    return '';
+  }
+
+  while (tokens[tokens.length - 1] === '·') tokens.pop();
+  return hasHan ? formatHanvietName(tokens.join(' ')) : '';
+}
+
+function parseHanVietMap(raw: string) {
+  const map = new Map<string, string>();
+
+  for (const rawLine of raw.split(/\r?\n/)) {
+    const line = rawLine.replace(/^\uFEFF/, '').trim();
+    if (!line || line.startsWith('#')) continue;
+    const separatorIndex = line.indexOf('=');
+    if (separatorIndex <= 0) continue;
+
+    const key = line.slice(0, separatorIndex).trim();
+    const value = line.slice(separatorIndex + 1).replace(/\s+/g, ' ').trim();
+    if (Array.from(key).length === 1 && value) map.set(key, value);
+  }
+
+  return map;
+}
+
+function containsHanChar(value: string) {
+  return Array.from(value).some((char) => isHanChar(char));
+}
+
+function isHanChar(value: string) {
+  return /\p{Script=Han}/u.test(value);
+}
+
+function isNameSeparator(value: string) {
+  return value === '·' ||
+    value === '・' ||
+    value === '•' ||
+    value === '-' ||
+    value === '‐' ||
+    value === '‑' ||
+    value === '‒' ||
+    value === '–' ||
+    value === '—' ||
+    value === '―' ||
+    value === '－';
 }
 
 function countOccurrences(text: string, needle: string) {
