@@ -100,6 +100,8 @@ export const MODEL_OPTIONS = [
 export type ModelId = (typeof MODEL_OPTIONS)[number]['id'];
 export const DEFAULT_MODEL_ID = 'gemini-3.1-flash-lite';
 export const GEMINI_TEXT_CHARS_PER_TOKEN = 4;
+export const DEEPSEEK_HAN_TOKENS_PER_CHAR = 0.6;
+export const DEEPSEEK_NON_HAN_TOKENS_PER_CHAR = 0.3;
 export const PROMPT_OVERHEAD_TOKENS = 260;
 export const TIER_OPTIONS = [
   { id: 'free', label: 'Free API' },
@@ -145,6 +147,7 @@ const MIN_TIMEOUT_SPLIT_CHARS = 1200;
 const HAN_VIET_MAP = parseHanVietMap(hanVietRaw);
 const LOWERCASE_HANVIET_SUFFIXES = parseLowercaseHanvietSuffixes(hauTuRaw);
 const MIN_POLICY_BLOCK_SPLIT_CHARS = 500;
+const HAN_CHARACTER_PATTERN = /\p{Script=Han}/u;
 const GEMINI_SAFETY_SETTINGS_OFF = [
   { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'OFF' },
   { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'OFF' },
@@ -206,12 +209,31 @@ export function getModelPricing(modelId: string, tierId: TierId = DEFAULT_TIER_I
   };
 }
 
-export function estimateTokens(text: string) {
-  return estimateTokensFromCharCount(Array.from(text || '').length);
+export function estimateTokens(text: string, modelId: string = DEFAULT_MODEL_ID) {
+  const characters = Array.from(text || '');
+  if (getModelProvider(modelId) !== 'deepseek') {
+    return estimateTokensFromCharCount(characters.length, modelId);
+  }
+
+  let hanCharCount = 0;
+  for (const character of characters) {
+    if (HAN_CHARACTER_PATTERN.test(character)) hanCharCount++;
+  }
+
+  const nonHanCharCount = characters.length - hanCharCount;
+  return Math.ceil(
+    (hanCharCount * DEEPSEEK_HAN_TOKENS_PER_CHAR) +
+    (nonHanCharCount * DEEPSEEK_NON_HAN_TOKENS_PER_CHAR),
+  );
 }
 
-export function estimateTokensFromCharCount(charCount: number) {
-  return Math.ceil(Math.max(0, charCount) / GEMINI_TEXT_CHARS_PER_TOKEN);
+export function estimateTokensFromCharCount(charCount: number, modelId: string = DEFAULT_MODEL_ID) {
+  const safeCharCount = Math.max(0, charCount);
+  if (getModelProvider(modelId) === 'deepseek') {
+    return Math.ceil(safeCharCount * DEEPSEEK_HAN_TOKENS_PER_CHAR);
+  }
+
+  return Math.ceil(safeCharCount / GEMINI_TEXT_CHARS_PER_TOKEN);
 }
 
 export function estimateUsage({
@@ -229,9 +251,9 @@ export function estimateUsage({
 }) {
   const model = getModelOption(modelId);
   const pricing = getModelPricing(modelId, tierId);
-  const inputTokens = estimateTokens(text) + chunks.length * PROMPT_OVERHEAD_TOKENS;
+  const inputTokens = estimateTokens(text, model.id) + chunks.length * PROMPT_OVERHEAD_TOKENS;
   const outputTokens = rows.length > 0
-    ? estimateTokens(JSON.stringify({ names: rows }))
+    ? estimateTokens(JSON.stringify({ names: rows }), model.id)
     : Math.ceil(Math.max(chunks.length * 450, inputTokens * 0.08));
   const inputCost = (inputTokens / 1_000_000) * pricing.inputUsdPerMillion;
   const outputCost = (outputTokens / 1_000_000) * pricing.outputUsdPerMillion;
@@ -347,7 +369,7 @@ export async function extractChunksWithQueue({
     while (!cancelled) {
       const index = getNextPendingIndex();
       if (index === -1) return;
-      const inputTokens = estimateTokens(chunks[index]) + PROMPT_OVERHEAD_TOKENS;
+      const inputTokens = estimateTokens(chunks[index], modelId) + PROMPT_OVERHEAD_TOKENS;
       try {
         const chunkRows = await extractChunkWithRetry({
           acquireApiKey,
