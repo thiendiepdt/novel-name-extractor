@@ -1062,7 +1062,7 @@ function normalizeNameReading(record: Record<string, unknown>, nameStyle: NameSt
   return 'foreign';
 }
 
-function translateHanVietName(value: string) {
+export function translateHanVietName(value: string) {
   const tokens: string[] = [];
   let hasHan = false;
   let lastWasSeparator = false;

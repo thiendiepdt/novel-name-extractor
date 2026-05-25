@@ -10,11 +10,12 @@ type ExportPanelProps = {
   onCopy: () => void;
   onDownload: () => void;
   onFormatChange: (format: ExportFormat) => void;
+  className?: string;
 };
 
-export function ExportPanel({ exportFormat, exportValue, onCopy, onDownload, onFormatChange }: ExportPanelProps) {
+export function ExportPanel({ className = '', exportFormat, exportValue, onCopy, onDownload, onFormatChange }: ExportPanelProps) {
   return (
-    <Card className="flex min-h-0 flex-col overflow-hidden">
+    <Card className={`flex min-h-0 flex-col overflow-hidden ${className}`}>
       <CardHeader>
         <CardTitle>Xuất File</CardTitle>
         <div className="flex gap-1 rounded-md bg-muted p-1">

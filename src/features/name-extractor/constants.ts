@@ -4,6 +4,7 @@ export const STORAGE_KEYS = {
   deepseekApiKeys: 'ai_name_extractor_deepseek_api_keys_list',
   model: 'ai_name_extractor_model',
   settings: 'ai_name_extractor_settings',
+  hanvietOverrides: 'ai_name_extractor_hanviet_overrides',
   pageSize: 'ai_name_extractor_page_size',
 };
 

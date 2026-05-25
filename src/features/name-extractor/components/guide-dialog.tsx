@@ -38,6 +38,7 @@ export function GuideDialog({ estimate, tiers, onClose }: GuideDialogProps) {
                 'Chọn model và thêm đúng API key cho provider đang dùng. Gemini có Quota Free/Paid Tier 1; DeepSeek dùng key DeepSeek riêng.',
                 'Chọn độ phủ Cao nếu muốn bắt nhiều tên phụ; Cân bằng nếu muốn ít nhiễu hơn.',
                 'Bấm Trích xuất, kiểm tra bảng kết quả, rồi copy hoặc tải Names.txt / Names2.txt.',
+                'Dùng Sửa Hán Việt để thêm rule Han=Viet; click rule để sửa tên riêng theo từng loại kết quả.',
                 'Nếu bị lỗi mà raw text, model và settings chưa đổi, bấm Thử lại từ lỗi để chạy tiếp các chunk còn thiếu.',
               ]} />
             </GuideSection>
