@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Plus, Trash2, Upload, X } from 'lucide-react';
+import { Plus, Search, Trash2, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -31,8 +31,18 @@ export function HanvietOverridesPanel({
 }) {
   const [source, setSource] = useState('');
   const [target, setTarget] = useState('');
+  const [search, setSearch] = useState('');
   const [editingGroup, setEditingGroup] = useState<HanvietOverrideRuleGroup | null>(null);
   const groups = useMemo(() => getHanvietOverrideRuleGroups(rules), [rules]);
+  const filteredGroups = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase('vi');
+    if (!query) return groups;
+
+    return groups.filter((group) => (
+      group.source.toLocaleLowerCase('vi').includes(query) ||
+      group.rules.some((rule) => rule.target.toLocaleLowerCase('vi').includes(query))
+    ));
+  }, [groups, search]);
 
   function addRule() {
     if (!onAddRule(source, target)) return;
@@ -42,7 +52,7 @@ export function HanvietOverridesPanel({
 
   return (
     <>
-      <Card className="flex max-h-[18rem] min-h-[15rem] shrink-0 flex-col overflow-hidden">
+      <Card className="flex h-[18rem] shrink-0 flex-col overflow-hidden">
         <CardHeader className="grid grid-cols-[auto_1fr] gap-2 p-2">
           <CardTitle>Sửa Hán Việt</CardTitle>
           <label className="inline-flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-border bg-secondary px-2.5 text-xs font-medium text-secondary-foreground transition-colors hover:bg-secondary/80">
@@ -60,28 +70,39 @@ export function HanvietOverridesPanel({
           </label>
         </CardHeader>
 
-        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 border-t border-border p-2">
-          <Input
-            className="h-8"
-            value={source}
-            onChange={(event) => setSource(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') addRule();
-            }}
-            placeholder="Hán / Hán Việt"
-          />
-          <Input
-            className="h-8"
-            value={target}
-            onChange={(event) => setTarget(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') addRule();
-            }}
-            placeholder="Mặc định"
-          />
-          <Button className="h-8 px-2" onClick={addRule}>
-            <Plus className="h-4 w-4" />
-          </Button>
+        <div className="grid gap-2 border-t border-border p-2">
+          <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2">
+            <Input
+              className="h-8"
+              value={source}
+              onChange={(event) => setSource(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') addRule();
+              }}
+              placeholder="Hán / Hán Việt"
+            />
+            <Input
+              className="h-8"
+              value={target}
+              onChange={(event) => setTarget(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') addRule();
+              }}
+              placeholder="Mặc định"
+            />
+            <Button className="h-8 px-2" onClick={addRule}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-2 h-4 w-4 text-muted-foreground" />
+            <Input
+              className="h-8 pl-8"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Tìm rule..."
+            />
+          </div>
         </div>
 
         <CardContent className="min-h-0 flex-1 overflow-auto border-t border-border p-0">
@@ -89,9 +110,13 @@ export function HanvietOverridesPanel({
             <div className="flex h-full items-center justify-center p-3 text-center text-xs text-muted-foreground">
               Chưa có rule Hán=Việt.
             </div>
+          ) : filteredGroups.length === 0 ? (
+            <div className="flex h-full items-center justify-center p-3 text-center text-xs text-muted-foreground">
+              Không có rule khớp tìm kiếm.
+            </div>
           ) : (
             <div className="divide-y divide-border text-xs">
-              {groups.map((group) => (
+              {filteredGroups.map((group) => (
                 <div key={group.source} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 px-2 py-1.5 hover:bg-accent/40">
                   <button type="button" className="min-w-0 text-left" onClick={() => setEditingGroup(group)}>
                     <div className="truncate font-mono text-foreground">{group.source}={getPrimaryTarget(group)}</div>
@@ -112,7 +137,7 @@ export function HanvietOverridesPanel({
         </CardContent>
 
         <div className="flex items-center justify-between border-t border-border px-2 py-1.5 text-xs text-muted-foreground">
-          <span>{groups.length.toLocaleString()} mục / {rules.length.toLocaleString()} rule</span>
+          <span>{filteredGroups.length.toLocaleString()} / {groups.length.toLocaleString()} mục, {rules.length.toLocaleString()} rule</span>
           <Button variant="ghost" className="h-7 px-2" disabled={rules.length === 0} onClick={onClearRules}>
             Xóa hết
           </Button>
