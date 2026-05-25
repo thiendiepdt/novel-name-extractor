@@ -1,7 +1,7 @@
 import { Eye, EyeOff, KeyRound, Plus, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { DEFAULT_EXTRACTION_SETTINGS, TIER_OPTIONS } from '@/lib/gemini';
+import { DEFAULT_EXTRACTION_SETTINGS, TIER_OPTIONS, getModelOption } from '@/lib/gemini';
 import type { ExtractionSettings, RateLimits } from '@/lib/gemini';
 import { compactNumber, formatUsd, maskApiKey } from '../lib/format';
 import type { SettingsPatchKey, UsageEstimate } from '../types';
@@ -12,6 +12,8 @@ export function SettingsPanel({
   busy,
   newApiKey,
   normalizedSettings,
+  selectedModel,
+  selectedProviderLabel,
   showKey,
   usageEstimate,
   onAddApiKey,
@@ -26,6 +28,8 @@ export function SettingsPanel({
   busy: boolean;
   newApiKey: string;
   normalizedSettings: ExtractionSettings;
+  selectedModel: string;
+  selectedProviderLabel: string;
   showKey: boolean;
   usageEstimate: UsageEstimate;
   onAddApiKey: () => void;
@@ -35,6 +39,9 @@ export function SettingsPanel({
   onSettingChange: (key: SettingsPatchKey, value: string | number) => void;
   onShowKeyToggle: () => void;
 }) {
+  const selectedModelOption = getModelOption(selectedModel);
+  const usesQuotaTiers = selectedModelOption.provider === 'gemini';
+
   return (
     <div className="border-t border-border p-3">
       <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
@@ -52,6 +59,7 @@ export function SettingsPanel({
       <ApiKeyManager
         apiKeys={apiKeys}
         newApiKey={newApiKey}
+        providerLabel={selectedProviderLabel}
         showKey={showKey}
         onAdd={onAddApiKey}
         onChange={onNewApiKeyChange}
@@ -69,13 +77,17 @@ export function SettingsPanel({
           disabled={busy}
           onChange={(value) => onSettingChange('nameStyle', value)}
         />
-        <SegmentedSetting
-          label="Quota"
-          options={TIER_OPTIONS.map((tier) => ({ label: tier.label, value: tier.id }))}
-          value={normalizedSettings.tierId}
-          disabled={busy}
-          onChange={(value) => onSettingChange('tierId', value)}
-        />
+        {usesQuotaTiers ? (
+          <SegmentedSetting
+            label="Quota"
+            options={TIER_OPTIONS.map((tier) => ({ label: tier.label, value: tier.id }))}
+            value={normalizedSettings.tierId}
+            disabled={busy}
+            onChange={(value) => onSettingChange('tierId', value)}
+          />
+        ) : (
+          <ReadonlySetting label="Provider" value={`${selectedProviderLabel} API`} />
+        )}
         <SegmentedSetting
           label="Độ phủ"
           options={[
@@ -160,6 +172,7 @@ export function SettingsPanel({
 function ApiKeyManager({
   apiKeys,
   newApiKey,
+  providerLabel,
   showKey,
   onAdd,
   onChange,
@@ -168,6 +181,7 @@ function ApiKeyManager({
 }: {
   apiKeys: string[];
   newApiKey: string;
+  providerLabel: string;
   showKey: boolean;
   onAdd: () => void;
   onChange: (value: string) => void;
@@ -192,7 +206,7 @@ function ApiKeyManager({
             }}
             autoComplete="off"
             className="h-8 pl-7 text-xs"
-            placeholder="Dán API key"
+            placeholder={`Dán ${providerLabel} API key`}
           />
         </div>
         <Button variant="secondary" size="icon" onClick={onShowKeyToggle} title="Show or hide API key">
@@ -215,6 +229,17 @@ function ApiKeyManager({
             </button>
           </span>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function ReadonlySetting({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="col-span-2 grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2 text-xs text-muted-foreground">
+      <span className="truncate">{label}</span>
+      <div className="flex h-10 items-center rounded-md border border-border bg-background px-3 font-medium text-foreground">
+        {value}
       </div>
     </div>
   );

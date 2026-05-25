@@ -17,6 +17,8 @@ export function SourcePanel({
   newApiKey,
   normalizedSettings,
   progress,
+  selectedModel,
+  selectedProviderLabel,
   showKey,
   sourceText,
   uploadMode,
@@ -45,6 +47,8 @@ export function SourcePanel({
   newApiKey: string;
   normalizedSettings: ExtractionSettings;
   progress: ProgressState;
+  selectedModel: string;
+  selectedProviderLabel: string;
   showKey: boolean;
   sourceText: string;
   uploadMode: UploadMode;
@@ -180,6 +184,8 @@ export function SourcePanel({
         busy={busy}
         newApiKey={newApiKey}
         normalizedSettings={normalizedSettings}
+        selectedModel={selectedModel}
+        selectedProviderLabel={selectedProviderLabel}
         showKey={showKey}
         usageEstimate={usageEstimate}
         onAddApiKey={onAddApiKey}

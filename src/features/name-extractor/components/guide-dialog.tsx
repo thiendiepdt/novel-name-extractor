@@ -13,6 +13,8 @@ type GuideDialogProps = {
 };
 
 export function GuideDialog({ estimate, tiers, onClose }: GuideDialogProps) {
+  const geminiModels = MODEL_OPTIONS.filter((model) => model.provider === 'gemini');
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-3 text-foreground">
       <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-xl">
@@ -33,7 +35,7 @@ export function GuideDialog({ estimate, tiers, onClose }: GuideDialogProps) {
               <GuideList items={[
                 'Dán raw text tiếng Trung hoặc tải file .txt.',
                 'Chọn kiểu truyện: Đông phương dùng Hán Việt; Quốc tế giữ tên nước ngoài theo phiên âm/spelling gốc khi rõ, còn tên Hán/tu tiên vẫn dùng Hán Việt.',
-                'Chọn Quota theo quota thật của Gemini API key: Free API hoặc Paid Tier 1. Đây không phải gói trả phí của app.',
+                'Chọn model và thêm đúng API key cho provider đang dùng. Gemini có Quota Free/Paid Tier 1; DeepSeek dùng key DeepSeek riêng.',
                 'Chọn độ phủ Cao nếu muốn bắt nhiều tên phụ; Cân bằng nếu muốn ít nhiễu hơn.',
                 'Bấm Trích xuất, kiểm tra bảng kết quả, rồi copy hoặc tải Names.txt / Names2.txt.',
                 'Nếu bị lỗi mà raw text, model và settings chưa đổi, bấm Thử lại từ lỗi để chạy tiếp các chunk còn thiếu.',
@@ -42,7 +44,7 @@ export function GuideDialog({ estimate, tiers, onClose }: GuideDialogProps) {
 
             <GuideSection title="Thuật ngữ">
               <GuideList items={[
-                'Chunk: đoạn raw text nhỏ gửi lên Gemini trong một request.',
+                'Chunk: đoạn raw text nhỏ gửi lên model AI trong một request.',
                 'Lặp lại: số ký tự overlap giữa 2 chunk để giảm mất tên ở ranh giới.',
                 'Song song: số request chạy đồng thời. Cao hơn nhanh hơn nhưng dễ chạm rate limit hơn.',
                 'Thử lại: số lần tự retry cho lỗi tạm thời như 429 hoặc lỗi server.',
@@ -66,23 +68,24 @@ export function GuideDialog({ estimate, tiers, onClose }: GuideDialogProps) {
                 'Key hết quota hoặc sai quyền: xóa key lỗi, thêm key khác rồi bấm Thử lại từ lỗi.',
                 'JSON không hợp lệ: app tự retry theo cấu hình Thử lại; nếu vẫn fail, bấm retry lại chunk đó.',
                 'Input đã đổi sau khi lỗi: app sẽ chạy lại từ đầu vì chunk cũ không còn khớp.',
-                'Muốn ổn định hơn: gắn billing để dùng Paid Tier 1, tăng quota và giảm lỗi giới hạn.',
+                'Muốn ổn định hơn với Gemini: gắn billing để dùng Paid Tier 1, tăng quota và giảm lỗi giới hạn.',
               ]} />
             </GuideSection>
 
             <GuideSection title="API key và quota">
               <GuideList items={[
                 'Thêm nhiều key: app sẽ xoay vòng key theo từng chunk/request.',
-                'Rate limit trong app được điều tiết theo Quota đang chọn, nên chọn đúng Free API hoặc Paid Tier 1.',
+                'Gemini rate limit trong app được điều tiết theo Quota đang chọn, nên chọn đúng Free API hoặc Paid Tier 1.',
                 'Nhiều key giúp tiếp tục khi một key lỗi hoặc hết quota, nhưng không thay thế billing cho workload lớn.',
-                'Free API phù hợp test hoặc truyện ngắn. Paid Tier 1 phù hợp chạy truyện dài, song song cao và ít phải canh quota.',
+                'DeepSeek V4 Flash dùng OpenAI-compatible API và key riêng; app gọi trực tiếp endpoint DeepSeek.',
+                'Gemini Free API phù hợp test hoặc truyện ngắn. Paid Tier 1 phù hợp chạy truyện dài, song song cao và ít phải canh quota.',
               ]} />
               <div className="mt-3 overflow-x-auto rounded-md border border-border">
                 <table className="min-w-[44rem] w-full text-left text-sm">
                   <thead className="bg-muted text-muted-foreground">
                     <tr>
                       <th className="whitespace-nowrap px-3 py-2">Quota</th>
-                      {MODEL_OPTIONS.map((model) => (
+                      {geminiModels.map((model) => (
                         <th key={model.id} className="whitespace-nowrap px-3 py-2">{model.shortLabel}</th>
                       ))}
                     </tr>
@@ -91,7 +94,7 @@ export function GuideDialog({ estimate, tiers, onClose }: GuideDialogProps) {
                     {tiers.map((tier) => (
                       <tr key={tier.id} className="border-t border-border">
                         <td className="whitespace-nowrap px-3 py-2 font-medium text-foreground">{tier.label}</td>
-                        {MODEL_OPTIONS.map((model) => {
+                        {geminiModels.map((model) => {
                           const limits = getRateLimits(model.id, tier.id);
                           return (
                             <td key={model.id} className="whitespace-nowrap px-3 py-2 font-mono">
@@ -116,14 +119,15 @@ export function GuideDialog({ estimate, tiers, onClose }: GuideDialogProps) {
                 <GuideMetric label="Tổng phí" value={`~${formatUsd(estimate.totalCost)}`} />
               </div>
               <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                Free API dùng quota miễn phí nên phù hợp test nhỏ, nhưng dễ chạm giới hạn. Khi gắn billing để dùng Paid Tier 1,
-                phí ước tính = token input x giá input + token output x giá output của model. Output thực tế có thể lệch theo số tên Gemini trả về.
+                Gemini Free API dùng quota miễn phí nên phù hợp test nhỏ, nhưng dễ chạm giới hạn. Với Gemini Paid Tier 1 hoặc DeepSeek,
+                phí ước tính = token input x giá input + token output x giá output của model. Output thực tế có thể lệch theo số tên AI trả về.
               </p>
               <div className="mt-3 overflow-x-auto rounded-md border border-border">
                 <table className="min-w-[32rem] w-full text-left text-sm">
                   <thead className="bg-muted text-muted-foreground">
                     <tr>
                       <th className="whitespace-nowrap px-3 py-2">Model</th>
+                      <th className="whitespace-nowrap px-3 py-2">Provider</th>
                       <th className="whitespace-nowrap px-3 py-2">Input paid</th>
                       <th className="whitespace-nowrap px-3 py-2">Output paid</th>
                     </tr>
@@ -132,6 +136,7 @@ export function GuideDialog({ estimate, tiers, onClose }: GuideDialogProps) {
                     {MODEL_OPTIONS.map((model) => (
                       <tr key={model.id} className="border-t border-border">
                         <td className="whitespace-nowrap px-3 py-2 font-medium text-foreground">{model.label}</td>
+                        <td className="whitespace-nowrap px-3 py-2">{model.provider === 'deepseek' ? 'DeepSeek' : 'Gemini'}</td>
                         <td className="whitespace-nowrap px-3 py-2 font-mono">${model.inputUsdPerMillion}/1M</td>
                         <td className="whitespace-nowrap px-3 py-2 font-mono">${model.outputUsdPerMillion}/1M</td>
                       </tr>
