@@ -17,7 +17,7 @@ export function getGuideNovelEstimate(): GuideEstimate {
   const totalChars = GUIDE_NOVEL_CHAPTERS * GUIDE_CHARS_PER_CHAPTER;
   const chunkStep = Math.max(1, settings.chunkSize - settings.chunkOverlap);
   const chunkCount = Math.max(1, Math.ceil(Math.max(1, totalChars - settings.chunkOverlap) / chunkStep));
-  const inputTokens = estimateTokensFromCharCount(totalChars) + (chunkCount * PROMPT_OVERHEAD_TOKENS);
+  const inputTokens = estimateTokensFromCharCount(totalChars, model.id) + (chunkCount * PROMPT_OVERHEAD_TOKENS);
   const outputTokens = Math.ceil(Math.max(chunkCount * 450, inputTokens * 0.08));
   const inputCost = (inputTokens / 1_000_000) * pricing.inputUsdPerMillion;
   const outputCost = (outputTokens / 1_000_000) * pricing.outputUsdPerMillion;

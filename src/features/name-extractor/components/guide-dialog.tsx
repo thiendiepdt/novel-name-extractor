@@ -120,7 +120,7 @@ export function GuideDialog({ estimate, tiers, onClose }: GuideDialogProps) {
               </div>
               <p className="mt-3 text-sm leading-6 text-muted-foreground">
                 Gemini Free API dùng quota miễn phí nên phù hợp test nhỏ, nhưng dễ chạm giới hạn. Với Gemini Paid Tier 1 hoặc DeepSeek,
-                phí ước tính = token input x giá input + token output x giá output của model. Output thực tế có thể lệch theo số tên AI trả về.
+                phí ước tính = token input x giá input + token output x giá output của model. DeepSeek dùng estimate riêng cho ký tự Hán và chưa trừ cache hit.
               </p>
               <div className="mt-3 overflow-x-auto rounded-md border border-border">
                 <table className="min-w-[32rem] w-full text-left text-sm">

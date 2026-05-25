@@ -99,8 +99,9 @@ Repo này có bảng giá mẫu trong app để ước lượng chi phí. Đây 
 | Gemini 3.1 Flash Lite | $0.25 | $1.50 |
 | Gemini 2.5 Flash | $0.30 | $2.50 |
 | Gemini 2.5 Flash Lite | $0.10 | $0.40 |
+| DeepSeek V4 Flash | $0.14 | $0.28 |
 
-Free API hiển thị phí `$0` trong app vì request free-tier không bị tính tiền, nhưng free tier có limit thấp hơn và phù hợp nhất cho test hoặc workload nhỏ. Token trong app là ước lượng theo tài liệu Gemini cho text, khoảng 4 ký tự cho 1 token; số thực tế có thể lệch theo tokenizer/model.
+Free API hiển thị phí `$0` trong app vì request free-tier không bị tính tiền, nhưng free tier có limit thấp hơn và phù hợp nhất cho test hoặc workload nhỏ. Token trong app là ước lượng theo provider: Gemini dùng khoảng 4 ký tự cho 1 token; DeepSeek dùng heuristic theo tài liệu DeepSeek, khoảng 0.6 token cho mỗi ký tự Hán và 0.3 token cho mỗi ký tự còn lại. Số thực tế có thể lệch theo tokenizer/model và cache hit của DeepSeek.
 
 ## Tài liệu
 
