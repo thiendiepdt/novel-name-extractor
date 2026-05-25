@@ -25,7 +25,7 @@ export function AppHeader({ selectedModel, apiKeyCount, busy, onModelChange, onG
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        <div className="flex rounded-md border border-border bg-background p-0.5" role="radiogroup" aria-label="Chọn model Gemini">
+        <div className="flex rounded-md border border-border bg-background p-0.5" role="radiogroup" aria-label="Chọn model AI">
           {MODEL_OPTIONS.map((model) => (
             <button
               key={model.id}

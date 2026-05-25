@@ -2,6 +2,7 @@ import hanVietRaw from '@/features/name-extractor/data/han-viet.txt?raw';
 import hauTuRaw from '@/features/name-extractor/data/hau-tu.txt?raw';
 
 export type Category = 'Person' | 'Location' | 'Faction' | 'Artifact' | 'Skill' | 'Title' | 'Creature';
+export type ModelProvider = 'gemini' | 'deepseek';
 export type NameStyle = 'eastern' | 'western';
 export type NameReading = 'hanviet' | 'foreign';
 export type RecallMode = 'high' | 'balanced';
@@ -57,6 +58,7 @@ type ChunkResult = NameRow[] | null;
 export const MODEL_OPTIONS = [
   {
     id: 'gemini-3-flash-preview',
+    provider: 'gemini',
     label: 'Gemini 3 Flash',
     shortLabel: '3 Flash',
     inputUsdPerMillion: 0.5,
@@ -64,6 +66,7 @@ export const MODEL_OPTIONS = [
   },
   {
     id: 'gemini-3.1-flash-lite',
+    provider: 'gemini',
     label: 'Gemini 3.1 Flash Lite',
     shortLabel: '3.1 Lite',
     inputUsdPerMillion: 0.25,
@@ -71,6 +74,7 @@ export const MODEL_OPTIONS = [
   },
   {
     id: 'gemini-2.5-flash',
+    provider: 'gemini',
     label: 'Gemini 2.5 Flash',
     shortLabel: '2.5 Flash',
     inputUsdPerMillion: 0.3,
@@ -78,10 +82,19 @@ export const MODEL_OPTIONS = [
   },
   {
     id: 'gemini-2.5-flash-lite',
+    provider: 'gemini',
     label: 'Gemini 2.5 Flash Lite',
     shortLabel: '2.5 Lite',
     inputUsdPerMillion: 0.1,
     outputUsdPerMillion: 0.4,
+  },
+  {
+    id: 'deepseek-v4-flash',
+    provider: 'deepseek',
+    label: 'DeepSeek V4 Flash',
+    shortLabel: 'DS V4 Flash',
+    inputUsdPerMillion: 0.14,
+    outputUsdPerMillion: 0.28,
   },
  ] as const;
 export type ModelId = (typeof MODEL_OPTIONS)[number]['id'];
@@ -100,12 +113,14 @@ export const RATE_LIMITS = {
     'gemini-3.1-flash-lite': { rpm: 15, tpm: 250000, rpd: 1000 },
     'gemini-2.5-flash': { rpm: 10, tpm: 250000, rpd: 250 },
     'gemini-2.5-flash-lite': { rpm: 15, tpm: 250000, rpd: 1000 },
+    'deepseek-v4-flash': { rpm: 2500, tpm: 1000000, rpd: '*' },
   },
   tier1: {
     'gemini-3-flash-preview': { rpm: 1000, tpm: 2000000, rpd: 10000 },
     'gemini-3.1-flash-lite': { rpm: 4000, tpm: 4000000, rpd: 150000 },
     'gemini-2.5-flash': { rpm: 1000, tpm: 1000000, rpd: 10000 },
     'gemini-2.5-flash-lite': { rpm: 4000, tpm: 4000000, rpd: '*' },
+    'deepseek-v4-flash': { rpm: 2500, tpm: 1000000, rpd: '*' },
   },
 } satisfies Record<TierId, Record<ModelId, RateLimits>>;
 export const DEFAULT_EXTRACTION_SETTINGS: ExtractionSettings = {
@@ -119,7 +134,8 @@ export const DEFAULT_EXTRACTION_SETTINGS: ExtractionSettings = {
   maxRetries: 4,
   requestTimeoutSeconds: 30,
 };
-const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+const DEEPSEEK_API_BASE = 'https://api.deepseek.com';
 const CATEGORIES = new Set<Category>(['Person', 'Location', 'Faction', 'Artifact', 'Skill', 'Title', 'Creature']);
 const REQUEST_TIMEOUT_MS = 15000;
 const FREE_TIER_REQUEST_TIMEOUT_MS = 30000;
@@ -162,6 +178,14 @@ export function getModelOption(modelId: string) {
   return MODEL_OPTIONS.find((model) => model.id === modelId) || MODEL_OPTIONS[0];
 }
 
+export function getModelProvider(modelId: string): ModelProvider {
+  return getModelOption(modelId).provider;
+}
+
+export function getModelProviderLabel(modelId: string) {
+  return getModelProvider(modelId) === 'deepseek' ? 'DeepSeek' : 'Gemini';
+}
+
 export function getRateLimits(modelId: string, tierId: TierId = DEFAULT_TIER_ID): RateLimits {
   const resolvedModelId = isModelId(modelId) ? modelId : DEFAULT_MODEL_ID;
   return RATE_LIMITS[tierId]?.[resolvedModelId] || RATE_LIMITS[DEFAULT_TIER_ID][DEFAULT_MODEL_ID];
@@ -169,7 +193,7 @@ export function getRateLimits(modelId: string, tierId: TierId = DEFAULT_TIER_ID)
 
 export function getModelPricing(modelId: string, tierId: TierId = DEFAULT_TIER_ID) {
   const model = getModelOption(modelId);
-  if (tierId === 'free') {
+  if (model.provider === 'gemini' && tierId === 'free') {
     return {
       inputUsdPerMillion: 0,
       outputUsdPerMillion: 0,
@@ -444,7 +468,7 @@ async function extractChunkWithRetry({
   while (true) {
     const keyState = await acquireApiKey();
     if (!keyState || shouldCancel?.()) {
-      const error: GeminiError = new Error('Đã dừng request Gemini.');
+      const error: GeminiError = new Error('Đã dừng request AI.');
       error.cancelled = true;
       throw error;
     }
@@ -453,7 +477,7 @@ async function extractChunkWithRetry({
       onAttempt?.({ attempt });
       const hasSlot = await waitForSlot();
       if (!hasSlot || shouldCancel?.()) {
-        const error: GeminiError = new Error('Đã dừng request Gemini.');
+        const error: GeminiError = new Error('Đã dừng request AI.');
         error.cancelled = true;
         throw error;
       }
@@ -614,13 +638,36 @@ async function extractChunk(
   descriptionMode: DescriptionMode,
   requestTimeoutSeconds: number,
 ): Promise<NameRow[]> {
+  const prompt = buildPrompt(chunk, index, total, nameStyle, recallMode, descriptionMode);
+  const model = getModelOption(modelId);
+  const text = model.provider === 'deepseek'
+    ? await extractOpenAiCompatibleChunk(apiKey, model.id, prompt, index, total, requestTimeoutSeconds)
+    : await extractGeminiChunk(apiKey, model.id, prompt, index, total, requestTimeoutSeconds);
+
+  try {
+    return normalizeRows(parseJsonPayload(text), nameStyle);
+  } catch (parseError) {
+    const geminiError = toGeminiError(parseError);
+    geminiError.retryable = true;
+    throw geminiError;
+  }
+}
+
+async function extractGeminiChunk(
+  apiKey: string,
+  modelId: string,
+  prompt: string,
+  index: number,
+  total: number,
+  requestTimeoutSeconds: number,
+): Promise<string> {
   const controller = new AbortController();
   const requestTimeoutMs = requestTimeoutSeconds * 1000;
   const timeoutId = window.setTimeout(() => controller.abort(), requestTimeoutMs);
   let response: Response;
 
   try {
-    response = await fetch(`${API_BASE}/${modelId}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+    response = await fetch(`${GEMINI_API_BASE}/${modelId}:generateContent?key=${encodeURIComponent(apiKey)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal: controller.signal,
@@ -628,7 +675,7 @@ async function extractChunk(
         contents: [
           {
             role: 'user',
-            parts: [{ text: buildPrompt(chunk, index, total, nameStyle, recallMode, descriptionMode) }],
+            parts: [{ text: prompt }],
           },
         ],
         generationConfig: {
@@ -663,14 +710,65 @@ async function extractChunk(
   }
 
   const data = await response.json();
-  const text = getGeminiResponseText(data, index, total);
+  return getGeminiResponseText(data, index, total);
+}
+
+async function extractOpenAiCompatibleChunk(
+  apiKey: string,
+  modelId: string,
+  prompt: string,
+  index: number,
+  total: number,
+  requestTimeoutSeconds: number,
+): Promise<string> {
+  const controller = new AbortController();
+  const requestTimeoutMs = requestTimeoutSeconds * 1000;
+  const timeoutId = window.setTimeout(() => controller.abort(), requestTimeoutMs);
+  let response: Response;
+
   try {
-    return normalizeRows(parseJsonPayload(text), nameStyle);
-  } catch (parseError) {
-    const geminiError = toGeminiError(parseError);
+    response = await fetch(`${DEEPSEEK_API_BASE}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: modelId,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0,
+        max_tokens: 16384,
+        response_format: { type: 'json_object' },
+        stream: false,
+        thinking: { type: 'disabled' },
+      }),
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      const timeoutError: GeminiError = new Error(`DeepSeek request quá ${Math.round(requestTimeoutMs / 1000)} giây ở chunk ${index}/${total}.`);
+      timeoutError.retryable = true;
+      timeoutError.timedOut = true;
+      throw timeoutError;
+    }
+    const geminiError = toGeminiError(error);
     geminiError.retryable = true;
     throw geminiError;
+  } finally {
+    window.clearTimeout(timeoutId);
   }
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '');
+    const error: GeminiError = new Error(`DeepSeek API ${response.status}: ${detail.slice(0, 280)}`);
+    error.status = response.status;
+    error.retryable = response.status === 429 || response.status >= 500;
+    error.retryAfterMs = parseRetryAfter(response.headers.get('retry-after'));
+    throw error;
+  }
+
+  const data = await response.json();
+  return getOpenAiCompatibleResponseText(data, index, total);
 }
 
 async function waitForRequestSlot({
@@ -842,7 +940,7 @@ function parseJsonPayload(payload: string): unknown {
     return JSON.parse(trimmed);
   } catch {
     const jsonObject = extractFirstJsonObject(trimmed);
-    if (!jsonObject) throw new Error('Gemini không trả về JSON hợp lệ.');
+    if (!jsonObject) throw new Error('AI không trả về JSON hợp lệ.');
     return JSON.parse(jsonObject);
   }
 }
@@ -1125,6 +1223,35 @@ function getGeminiResponseText(data: unknown, index: number, total: number): str
   return candidate.content.parts
     .map((part) => (isRecord(part) && typeof part.text === 'string' ? part.text : ''))
     .join('\n');
+}
+
+function getOpenAiCompatibleResponseText(data: unknown, index: number, total: number): string {
+  if (!isRecord(data) || !Array.isArray(data.choices)) return '';
+  const choice = data.choices[0];
+  if (!isRecord(choice) || !isRecord(choice.message)) return '';
+
+  const content = choice.message.content;
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((part) => {
+        if (!isRecord(part)) return '';
+        if (typeof part.text === 'string') return part.text;
+        if (typeof part.content === 'string') return part.content;
+        return '';
+      })
+      .join('\n');
+  }
+
+  const finishReason = typeof choice.finish_reason === 'string' ? choice.finish_reason : '';
+  if (finishReason === 'content_filter') {
+    const error: GeminiError = new Error(`DeepSeek chặn chunk ${index}/${total}: content_filter.`);
+    error.retryable = false;
+    error.blockReason = finishReason;
+    throw error;
+  }
+
+  return '';
 }
 
 function createBlockedResponseError({
