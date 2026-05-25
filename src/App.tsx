@@ -3,6 +3,7 @@ import type { DragEvent } from 'react';
 import { AppHeader } from '@/features/name-extractor/components/app-header';
 import { ExportPanel } from '@/features/name-extractor/components/export-panel';
 import { GuideDialog } from '@/features/name-extractor/components/guide-dialog';
+import { HanvietOverridesPanel } from '@/features/name-extractor/components/hanviet-overrides-panel';
 import { MetricsBar } from '@/features/name-extractor/components/metrics-bar';
 import { RawPreviewDialog } from '@/features/name-extractor/components/raw-preview-dialog';
 import { ResultsPanel } from '@/features/name-extractor/components/results-panel';
@@ -17,6 +18,17 @@ import {
 } from '@/features/name-extractor/lib/extraction-session';
 import { formatQuickTranslatorName } from '@/features/name-extractor/lib/format';
 import { getGuideNovelEstimate } from '@/features/name-extractor/lib/guide-estimate';
+import {
+  applyHanvietOverrideRules,
+  createHanvietOverrideRule,
+  normalizeHanvietOverrideRules,
+  parseHanvietOverrideText,
+  removeHanvietOverrideRuleGroup,
+  replaceHanvietOverrideRuleGroup,
+  upsertHanvietOverrideRules,
+  type HanvietOverrideRule,
+  type HanvietOverrideTargetMap,
+} from '@/features/name-extractor/lib/hanviet-overrides';
 import { clampNumber, getPageButtons } from '@/features/name-extractor/lib/pagination';
 import type {
   ExportFormat,
@@ -48,6 +60,7 @@ export default function App() {
   const [deepseekApiKeys, setDeepseekApiKeys] = useStoredJsonState<string[]>(STORAGE_KEYS.deepseekApiKeys, []);
   const [selectedModel, setSelectedModel] = useStoredState(STORAGE_KEYS.model, DEFAULT_MODEL_ID);
   const [settings, setSettings] = useStoredJsonState<ExtractionSettings>(STORAGE_KEYS.settings, DEFAULT_EXTRACTION_SETTINGS);
+  const [hanvietOverrideRules, setHanvietOverrideRules] = useStoredJsonState<HanvietOverrideRule[]>(STORAGE_KEYS.hanvietOverrides, []);
   const [pageSize, setPageSize] = useStoredState(STORAGE_KEYS.pageSize, '20');
 
   const [newApiKey, setNewApiKey] = useState('');
@@ -77,15 +90,23 @@ export default function App() {
     () => (sourceText.trim() ? splitIntoChunks(sourceText.trim(), normalizedSettings) : []),
     [normalizedSettings, sourceText],
   );
+  const normalizedHanvietOverrideRules = useMemo(
+    () => normalizeHanvietOverrideRules(hanvietOverrideRules),
+    [hanvietOverrideRules],
+  );
+  const displayRows = useMemo(
+    () => applyHanvietOverrideRules(rows, normalizedHanvietOverrideRules),
+    [normalizedHanvietOverrideRules, rows],
+  );
   const usageEstimate = useMemo(
     () => estimateUsage({
       text: sourceText,
       chunks,
-      rows,
+      rows: displayRows,
       modelId: selectedModel,
       tierId: normalizedSettings.tierId,
     }),
-    [chunks, normalizedSettings.tierId, rows, selectedModel, sourceText],
+    [chunks, displayRows, normalizedSettings.tierId, selectedModel, sourceText],
   );
   const activeRateLimits = useMemo(
     () => getRateLimits(selectedModel, normalizedSettings.tierId),
@@ -102,7 +123,7 @@ export default function App() {
     return [...new Set([...storedKeys, ...migrated].map((key) => String(key).trim()).filter(Boolean))];
   }, [deepseekApiKeys, geminiApiKeys, legacyApiKey, selectedProvider]);
   const visibleRows = useMemo(() => {
-    let next = [...rows];
+    let next = [...displayRows];
     const query = search.trim().toLowerCase();
     if (query) {
       next = next.filter((row) => (
@@ -122,7 +143,7 @@ export default function App() {
       return sortAsc ? result : -result;
     });
     return next;
-  }, [category, rows, search, sortAsc, sortField]);
+  }, [category, displayRows, search, sortAsc, sortField]);
 
   const exportValue = useMemo(() => (
     visibleRows.map((row) => `${formatQuickTranslatorName(row.chinese)}=${row.hanviet}`).join('\n')
@@ -360,6 +381,66 @@ export default function App() {
     }
   }
 
+  function addHanvietOverrideRule(source: string, target: string) {
+    const rule = createHanvietOverrideRule(source, target);
+    if (!rule) {
+      showToast('Nhập rule theo dạng Hán=Việt hoặc Hán Việt=Việt.', true);
+      return false;
+    }
+
+    setHanvietOverrideRules((current) => upsertHanvietOverrideRules(current, [rule]));
+    showToast(`Đã lưu rule ${rule.source}=${rule.target}.`);
+    return true;
+  }
+
+  async function importHanvietOverrideFile(file: File | undefined) {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.txt')) {
+      showToast('Chỉ hỗ trợ file rule .txt', true);
+      return;
+    }
+
+    try {
+      const text = await file.text();
+      const { rules: importedRules, ignored } = parseHanvietOverrideText(text);
+      if (importedRules.length === 0) {
+        showToast('Không tìm thấy dòng Han=Viet hợp lệ.', true);
+        return;
+      }
+
+      setHanvietOverrideRules((current) => upsertHanvietOverrideRules(current, importedRules));
+      showToast(`Đã import ${importedRules.length} rule${ignored ? `, bỏ qua ${ignored} dòng` : ''}.`);
+    } catch {
+      showToast('Không đọc được file rule Hán Việt.', true);
+    }
+  }
+
+  function saveHanvietOverrideRuleGroup(previousSource: string, source: string, targets: HanvietOverrideTargetMap) {
+    const normalizedSource = source.trim();
+    if (!normalizedSource) {
+      showToast('Nhập Hán hoặc Hán Việt cho rule.', true);
+      return false;
+    }
+    if (!Object.values(targets).some((value) => String(value || '').trim())) {
+      showToast('Nhập ít nhất một tên Việt cho rule.', true);
+      return false;
+    }
+
+    setHanvietOverrideRules((current) => replaceHanvietOverrideRuleGroup(current, previousSource, normalizedSource, targets));
+    showToast(`Đã cập nhật rule ${normalizedSource}.`);
+    return true;
+  }
+
+  function removeHanvietOverrideRuleGroupBySource(source: string) {
+    setHanvietOverrideRules((current) => removeHanvietOverrideRuleGroup(current, source));
+  }
+
+  function clearHanvietOverrideRules() {
+    if (!window.confirm('Xóa toàn bộ rule Hán Việt?')) return;
+    setHanvietOverrideRules([]);
+    showToast('Đã xóa toàn bộ rule Hán Việt.');
+  }
+
   return (
     <div className="flex h-screen min-w-80 flex-col overflow-hidden bg-background text-foreground">
       <AppHeader
@@ -372,7 +453,7 @@ export default function App() {
       <MetricsBar
         chunks={chunks}
         progress={progress}
-        rows={rows}
+        rows={displayRows}
         selectedModel={selectedModel}
         sourceText={sourceText}
         usageEstimate={usageEstimate}
@@ -430,13 +511,24 @@ export default function App() {
           onSort={sortBy}
         />
 
-        <ExportPanel
-          exportFormat={exportFormat}
-          exportValue={exportValue}
-          onCopy={copyExport}
-          onDownload={downloadExport}
-          onFormatChange={setExportFormat}
-        />
+        <div className="flex min-h-0 flex-col gap-3">
+          <HanvietOverridesPanel
+            rules={normalizedHanvietOverrideRules}
+            onAddRule={addHanvietOverrideRule}
+            onClearRules={clearHanvietOverrideRules}
+            onImportFile={importHanvietOverrideFile}
+            onRemoveRuleGroup={removeHanvietOverrideRuleGroupBySource}
+            onSaveRuleGroup={saveHanvietOverrideRuleGroup}
+          />
+          <ExportPanel
+            className="flex-1"
+            exportFormat={exportFormat}
+            exportValue={exportValue}
+            onCopy={copyExport}
+            onDownload={downloadExport}
+            onFormatChange={setExportFormat}
+          />
+        </div>
       </main>
 
       <Toast toast={toast} />

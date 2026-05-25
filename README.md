@@ -62,7 +62,8 @@ npm run typecheck
 3. Chọn model, quota, kiểu truyện, độ phủ, cỡ chunk, số request song song, số lần retry và timeout.
 4. Bấm `Trích xuất`.
 5. Kiểm tra bảng kết quả, lọc/sort nếu cần.
-6. Copy hoặc tải `Names.txt` / `Names2.txt`.
+6. Thêm rule `Han=Viet` trong `Sửa Hán Việt` nếu cần đổi cách hiển thị theo toàn cục hoặc theo loại.
+7. Copy hoặc tải `Names.txt` / `Names2.txt`.
 
 Xem hướng dẫn đầy đủ tại [docs/USAGE.md](docs/USAGE.md).
 
