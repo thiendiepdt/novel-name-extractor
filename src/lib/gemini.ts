@@ -30,6 +30,11 @@ export type ExtractionSettings = {
   requestTimeoutSeconds: number;
 };
 
+export type OpenAiConfig = {
+  baseUrl?: string;
+  modelOverride?: string;
+};
+
 export type RateLimits = {
   rpm: number;
   tpm: number;
@@ -311,6 +316,7 @@ export function splitIntoChunks(text: string, settings: Partial<ExtractionSettin
 export async function extractChunksWithQueue({
   apiKeys,
   modelId,
+  openAiConfig,
   chunks,
   settings,
   onProgress,
@@ -318,6 +324,7 @@ export async function extractChunksWithQueue({
 }: {
   apiKeys: string[];
   modelId: string;
+  openAiConfig?: OpenAiConfig;
   chunks: string[];
   settings: Partial<ExtractionSettings>;
   onProgress?: (progress: {
@@ -415,6 +422,7 @@ export async function extractChunksWithQueue({
             });
           },
           modelId,
+          openAiConfig,
           chunk: chunks[index],
           index: index + 1,
           total: chunks.length,
@@ -472,6 +480,7 @@ async function extractChunkWithRetry({
   onAttempt,
   onRetry,
   modelId,
+  openAiConfig,
   chunk,
   index,
   total,
@@ -489,6 +498,7 @@ async function extractChunkWithRetry({
   onAttempt?: (progress: { attempt: number }) => void;
   onRetry?: (progress: { waitMs: number; error: GeminiError; attempt: number; split?: boolean; skipped?: boolean }) => void;
   modelId: string;
+  openAiConfig?: OpenAiConfig;
   chunk: string;
   index: number;
   total: number;
@@ -518,7 +528,7 @@ async function extractChunkWithRetry({
         throw error;
       }
 
-      return await extractChunk(keyState.key, modelId, chunk, index, total, nameStyle, recallMode, descriptionMode, requestTimeoutSeconds);
+      return await extractChunk(keyState.key, modelId, openAiConfig, chunk, index, total, nameStyle, recallMode, descriptionMode, requestTimeoutSeconds);
     } catch (error) {
       const geminiError = toGeminiError(error);
       coolDownApiKey(keyState, geminiError, attempt);
@@ -535,6 +545,7 @@ async function extractChunkWithRetry({
             onAttempt,
             onRetry,
             modelId,
+            openAiConfig,
             index,
             total,
             nameStyle,
@@ -566,6 +577,7 @@ async function extractChunkWithRetry({
           onAttempt,
           onRetry,
           modelId,
+          openAiConfig,
           index,
           total,
           nameStyle,
@@ -623,6 +635,24 @@ function getDefaultRequestTimeoutSeconds(tierId: TierId) {
   return Math.round(timeoutMs / 1000);
 }
 
+function normalizeOpenAiBaseUrl(value: string | undefined) {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return '';
+
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== 'https:' && url.hostname !== 'localhost' && url.hostname !== '127.0.0.1') return '';
+    return url.toString().replace(/\/+$/, '');
+  } catch {
+    return '';
+  }
+}
+
+function getOpenAiCompatibleChatCompletionsUrl(baseUrl: string) {
+  const normalized = baseUrl.replace(/\/+$/, '');
+  return normalized.endsWith('/chat/completions') ? normalized : `${normalized}/chat/completions`;
+}
+
 function canSplitChunkForRetry(chunk: string) {
   return chunk.trim().length >= MIN_TIMEOUT_SPLIT_CHARS;
 }
@@ -666,6 +696,7 @@ function splitChunkForRetry(chunk: string): [string, string] {
 async function extractChunk(
   apiKey: string,
   modelId: string,
+  openAiConfig: OpenAiConfig | undefined,
   chunk: string,
   index: number,
   total: number,
@@ -679,7 +710,7 @@ async function extractChunk(
   const text = model.provider === 'gemini'
     ? await extractGeminiChunk(apiKey, model.id, prompt, index, total, requestTimeoutSeconds)
     : model.provider === 'openai'
-      ? await extractOpenAiResponsesChunk(apiKey, model.id, prompt, index, total, requestTimeoutSeconds)
+      ? await extractOpenAiChunk(apiKey, model.id, openAiConfig, prompt, index, total, requestTimeoutSeconds)
       : await extractOpenAiCompatibleChunk(apiKey, model.id, prompt, index, total, requestTimeoutSeconds);
 
   try {
@@ -759,13 +790,47 @@ async function extractOpenAiCompatibleChunk(
   total: number,
   requestTimeoutSeconds: number,
 ): Promise<string> {
+  return extractOpenAiCompatibleChatChunk({
+    apiKey,
+    modelId,
+    prompt,
+    index,
+    total,
+    requestTimeoutSeconds,
+    baseUrl: DEEPSEEK_API_BASE,
+    providerLabel: 'DeepSeek',
+    extraBody: { thinking: { type: 'disabled' } },
+  });
+}
+
+async function extractOpenAiCompatibleChatChunk({
+  apiKey,
+  modelId,
+  prompt,
+  index,
+  total,
+  requestTimeoutSeconds,
+  baseUrl,
+  providerLabel,
+  extraBody = {},
+}: {
+  apiKey: string;
+  modelId: string;
+  prompt: string;
+  index: number;
+  total: number;
+  requestTimeoutSeconds: number;
+  baseUrl: string;
+  providerLabel: string;
+  extraBody?: Record<string, unknown>;
+}): Promise<string> {
   const controller = new AbortController();
   const requestTimeoutMs = requestTimeoutSeconds * 1000;
   const timeoutId = window.setTimeout(() => controller.abort(), requestTimeoutMs);
   let response: Response;
 
   try {
-    response = await fetch(`${DEEPSEEK_API_BASE}/chat/completions`, {
+    response = await fetch(getOpenAiCompatibleChatCompletionsUrl(baseUrl), {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -779,12 +844,12 @@ async function extractOpenAiCompatibleChunk(
         max_tokens: 16384,
         response_format: { type: 'json_object' },
         stream: false,
-        thinking: { type: 'disabled' },
+        ...extraBody,
       }),
     });
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
-      const timeoutError: GeminiError = new Error(`DeepSeek request quá ${Math.round(requestTimeoutMs / 1000)} giây ở chunk ${index}/${total}.`);
+      const timeoutError: GeminiError = new Error(`${providerLabel} request quá ${Math.round(requestTimeoutMs / 1000)} giây ở chunk ${index}/${total}.`);
       timeoutError.retryable = true;
       timeoutError.timedOut = true;
       throw timeoutError;
@@ -798,7 +863,7 @@ async function extractOpenAiCompatibleChunk(
 
   if (!response.ok) {
     const detail = await response.text().catch(() => '');
-    const error: GeminiError = new Error(`DeepSeek API ${response.status}: ${detail.slice(0, 280)}`);
+    const error: GeminiError = new Error(`${providerLabel} API ${response.status}: ${detail.slice(0, 280)}`);
     error.status = response.status;
     error.retryable = response.status === 429 || response.status >= 500;
     error.retryAfterMs = parseRetryAfter(response.headers.get('retry-after'));
@@ -806,7 +871,42 @@ async function extractOpenAiCompatibleChunk(
   }
 
   const data = await response.json();
-  return getOpenAiCompatibleResponseText(data, index, total);
+  return getOpenAiCompatibleResponseText(data, index, total, providerLabel);
+}
+
+async function extractOpenAiChunk(
+  apiKey: string,
+  modelId: string,
+  config: OpenAiConfig | undefined,
+  prompt: string,
+  index: number,
+  total: number,
+  requestTimeoutSeconds: number,
+): Promise<string> {
+  const rawBaseUrl = config?.baseUrl?.trim() || '';
+  const baseUrl = normalizeOpenAiBaseUrl(config?.baseUrl);
+  const resolvedModelId = config?.modelOverride?.trim() || modelId;
+
+  if (rawBaseUrl && !baseUrl) {
+    const error: GeminiError = new Error('OpenAI base URL không hợp lệ. Dùng URL https, hoặc localhost khi test local.');
+    error.retryable = false;
+    throw error;
+  }
+
+  if (baseUrl) {
+    return extractOpenAiCompatibleChatChunk({
+      apiKey,
+      modelId: resolvedModelId,
+      prompt,
+      index,
+      total,
+      requestTimeoutSeconds,
+      baseUrl,
+      providerLabel: 'OpenAI proxy',
+    });
+  }
+
+  return extractOpenAiResponsesChunk(apiKey, resolvedModelId, prompt, index, total, requestTimeoutSeconds);
 }
 
 async function extractOpenAiResponsesChunk(
@@ -1319,7 +1419,7 @@ function getGeminiResponseText(data: unknown, index: number, total: number): str
     .join('\n');
 }
 
-function getOpenAiCompatibleResponseText(data: unknown, index: number, total: number): string {
+function getOpenAiCompatibleResponseText(data: unknown, index: number, total: number, providerLabel = 'OpenAI-compatible API'): string {
   if (!isRecord(data) || !Array.isArray(data.choices)) return '';
   const choice = data.choices[0];
   if (!isRecord(choice) || !isRecord(choice.message)) return '';
@@ -1339,7 +1439,7 @@ function getOpenAiCompatibleResponseText(data: unknown, index: number, total: nu
 
   const finishReason = typeof choice.finish_reason === 'string' ? choice.finish_reason : '';
   if (finishReason === 'content_filter') {
-    const error: GeminiError = new Error(`DeepSeek chặn chunk ${index}/${total}: content_filter.`);
+    const error: GeminiError = new Error(`${providerLabel} chặn chunk ${index}/${total}: content_filter.`);
     error.retryable = false;
     error.blockReason = finishReason;
     throw error;

@@ -65,6 +65,8 @@ npm run typecheck
 6. Thêm rule `Han=Viet` trong `Sửa Hán Việt` nếu cần đổi cách hiển thị theo toàn cục hoặc theo loại.
 7. Copy hoặc tải `Names.txt` / `Names2.txt`.
 
+Với OpenAI proxy tương thích SDK OpenAI, chọn model OpenAI rồi cấu hình thêm `Base URL` dạng `https://.../v1` và `Model ID` proxy cấp.
+
 Xem hướng dẫn đầy đủ tại [docs/USAGE.md](docs/USAGE.md).
 
 ## API key, quota và billing

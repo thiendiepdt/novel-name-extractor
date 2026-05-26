@@ -40,6 +40,11 @@ Thêm một hoặc nhiều API key đúng với provider của model đang chọ
 
 Nhiều key sẽ được xoay vòng theo request. Điều này giúp khi một key gặp giới hạn tạm thời, nhưng không xóa bỏ limit cơ bản của provider. Nếu chạy truyện dài bằng Gemini hoặc chạy thường xuyên, vẫn nên dùng Paid Tier 1.
 
+Nếu dùng OpenAI proxy, chọn model OpenAI rồi nhập thêm:
+
+- `Base URL`: endpoint gốc tương thích OpenAI, ví dụ `https://www.nexusmmo.store/api2/v1`.
+- `Model ID`: model proxy cấp, ví dụ `gpt-5.5`. Nếu để trống, app dùng model đang chọn.
+
 ## 5. Chọn settings
 
 ### Model

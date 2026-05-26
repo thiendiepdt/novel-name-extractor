@@ -79,6 +79,7 @@ export function GuideDialog({ estimate, tiers, onClose }: GuideDialogProps) {
                 'Gemini rate limit trong app được điều tiết theo Quota đang chọn, nên chọn đúng Free API hoặc Paid Tier 1.',
                 'Nhiều key giúp tiếp tục khi một key lỗi hoặc hết quota, nhưng không thay thế billing cho workload lớn.',
                 'DeepSeek V4 Flash và GPT-5.4 Nano dùng key riêng theo provider; app gọi trực tiếp endpoint của provider tương ứng.',
+                'Với OpenAI proxy, nhập Base URL dạng .../v1 và Model ID proxy cấp; app sẽ gọi chat/completions.',
                 'Gemini Free API phù hợp test hoặc truyện ngắn. Paid Tier 1 phù hợp chạy truyện dài, song song cao và ít phải canh quota.',
               ]} />
               <div className="mt-3 overflow-x-auto rounded-md border border-border">

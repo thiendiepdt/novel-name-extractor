@@ -16,6 +16,8 @@ export function SourcePanel({
   dragActive,
   newApiKey,
   normalizedSettings,
+  openAiBaseUrl,
+  openAiModelOverride,
   progress,
   selectedModel,
   selectedProviderLabel,
@@ -30,6 +32,8 @@ export function SourcePanel({
   onDragActiveChange,
   onImportFile,
   onNewApiKeyChange,
+  onOpenAiBaseUrlChange,
+  onOpenAiModelOverrideChange,
   onPaste,
   onPreviewOpen,
   onRemoveApiKey,
@@ -46,6 +50,8 @@ export function SourcePanel({
   dragActive: boolean;
   newApiKey: string;
   normalizedSettings: ExtractionSettings;
+  openAiBaseUrl: string;
+  openAiModelOverride: string;
   progress: ProgressState;
   selectedModel: string;
   selectedProviderLabel: string;
@@ -60,6 +66,8 @@ export function SourcePanel({
   onDragActiveChange: (active: boolean) => void;
   onImportFile: (file?: File) => void;
   onNewApiKeyChange: (value: string) => void;
+  onOpenAiBaseUrlChange: (value: string) => void;
+  onOpenAiModelOverrideChange: (value: string) => void;
   onPaste: () => void;
   onPreviewOpen: () => void;
   onRemoveApiKey: (key: string) => void;
@@ -184,12 +192,16 @@ export function SourcePanel({
         busy={busy}
         newApiKey={newApiKey}
         normalizedSettings={normalizedSettings}
+        openAiBaseUrl={openAiBaseUrl}
+        openAiModelOverride={openAiModelOverride}
         selectedModel={selectedModel}
         selectedProviderLabel={selectedProviderLabel}
         showKey={showKey}
         usageEstimate={usageEstimate}
         onAddApiKey={onAddApiKey}
         onNewApiKeyChange={onNewApiKeyChange}
+        onOpenAiBaseUrlChange={onOpenAiBaseUrlChange}
+        onOpenAiModelOverrideChange={onOpenAiModelOverrideChange}
         onRemoveApiKey={onRemoveApiKey}
         onResetSettings={onResetSettings}
         onSettingChange={onSettingChange}
