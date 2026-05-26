@@ -12,12 +12,16 @@ export function SettingsPanel({
   busy,
   newApiKey,
   normalizedSettings,
+  openAiBaseUrl,
+  openAiModelOverride,
   selectedModel,
   selectedProviderLabel,
   showKey,
   usageEstimate,
   onAddApiKey,
   onNewApiKeyChange,
+  onOpenAiBaseUrlChange,
+  onOpenAiModelOverrideChange,
   onRemoveApiKey,
   onResetSettings,
   onSettingChange,
@@ -28,12 +32,16 @@ export function SettingsPanel({
   busy: boolean;
   newApiKey: string;
   normalizedSettings: ExtractionSettings;
+  openAiBaseUrl: string;
+  openAiModelOverride: string;
   selectedModel: string;
   selectedProviderLabel: string;
   showKey: boolean;
   usageEstimate: UsageEstimate;
   onAddApiKey: () => void;
   onNewApiKeyChange: (value: string) => void;
+  onOpenAiBaseUrlChange: (value: string) => void;
+  onOpenAiModelOverrideChange: (value: string) => void;
   onRemoveApiKey: (key: string) => void;
   onResetSettings: (settings: ExtractionSettings) => void;
   onSettingChange: (key: SettingsPatchKey, value: string | number) => void;
@@ -41,6 +49,7 @@ export function SettingsPanel({
 }) {
   const selectedModelOption = getModelOption(selectedModel);
   const usesQuotaTiers = selectedModelOption.provider === 'gemini';
+  const usesOpenAiConfig = selectedModelOption.provider === 'openai';
 
   return (
     <div className="border-t border-border p-3">
@@ -87,6 +96,24 @@ export function SettingsPanel({
           />
         ) : (
           <ReadonlySetting label="Provider" value={`${selectedProviderLabel} API`} />
+        )}
+        {usesOpenAiConfig && (
+          <>
+            <TextSetting
+              label="Base URL"
+              value={openAiBaseUrl}
+              placeholder="https://api.openai.com/v1"
+              disabled={busy}
+              onChange={onOpenAiBaseUrlChange}
+            />
+            <TextSetting
+              label="Model ID"
+              value={openAiModelOverride}
+              placeholder={selectedModel}
+              disabled={busy}
+              onChange={onOpenAiModelOverrideChange}
+            />
+          </>
         )}
         <SegmentedSetting
           label="Độ phủ"
@@ -315,6 +342,34 @@ function NumberSetting({
         step={step}
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
+        className="h-8 font-mono text-xs"
+      />
+    </label>
+  );
+}
+
+function TextSetting({
+  label,
+  value,
+  onChange,
+  placeholder,
+  disabled = false,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+}) {
+  return (
+    <label className="col-span-2 grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2 text-xs text-muted-foreground">
+      <span className="truncate">{label}</span>
+      <Input
+        type="text"
+        value={value}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
         className="h-8 font-mono text-xs"
       />
     </label>

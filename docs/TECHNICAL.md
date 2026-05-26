@@ -176,6 +176,7 @@ Các giá trị được lưu:
 
 - Legacy single API key.
 - Danh sách API key.
+- OpenAI proxy base URL và model override.
 - Model đang chọn.
 - Extraction settings.
 - Page size.

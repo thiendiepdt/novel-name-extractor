@@ -3,6 +3,8 @@ export const STORAGE_KEYS = {
   apiKeys: 'ai_name_extractor_api_keys_list',
   deepseekApiKeys: 'ai_name_extractor_deepseek_api_keys_list',
   openaiApiKeys: 'ai_name_extractor_openai_api_keys_list',
+  openaiBaseUrl: 'ai_name_extractor_openai_base_url',
+  openaiModelOverride: 'ai_name_extractor_openai_model_override',
   model: 'ai_name_extractor_model',
   settings: 'ai_name_extractor_settings',
   hanvietOverrides: 'ai_name_extractor_hanviet_overrides',

@@ -59,6 +59,8 @@ export default function App() {
   const [geminiApiKeys, setGeminiApiKeys] = useStoredJsonState<string[]>(STORAGE_KEYS.apiKeys, []);
   const [deepseekApiKeys, setDeepseekApiKeys] = useStoredJsonState<string[]>(STORAGE_KEYS.deepseekApiKeys, []);
   const [openaiApiKeys, setOpenaiApiKeys] = useStoredJsonState<string[]>(STORAGE_KEYS.openaiApiKeys, []);
+  const [openAiBaseUrl, setOpenAiBaseUrl] = useStoredState(STORAGE_KEYS.openaiBaseUrl, '');
+  const [openAiModelOverride, setOpenAiModelOverride] = useStoredState(STORAGE_KEYS.openaiModelOverride, '');
   const [selectedModel, setSelectedModel] = useStoredState(STORAGE_KEYS.model, DEFAULT_MODEL_ID);
   const [settings, setSettings] = useStoredJsonState<ExtractionSettings>(STORAGE_KEYS.settings, DEFAULT_EXTRACTION_SETTINGS);
   const [hanvietOverrideRules, setHanvietOverrideRules] = useStoredJsonState<HanvietOverrideRule[]>(STORAGE_KEYS.hanvietOverrides, []);
@@ -87,6 +89,10 @@ export default function App() {
   const normalizedSettings = useMemo(() => normalizeExtractionSettings(settings), [settings]);
   const selectedProvider = useMemo(() => getModelProvider(selectedModel), [selectedModel]);
   const selectedProviderLabel = useMemo(() => getModelProviderLabel(selectedModel), [selectedModel]);
+  const openAiConfig = useMemo(() => ({
+    baseUrl: openAiBaseUrl.trim(),
+    modelOverride: openAiModelOverride.trim(),
+  }), [openAiBaseUrl, openAiModelOverride]);
   const chunks = useMemo(
     () => (sourceText.trim() ? splitIntoChunks(sourceText.trim(), normalizedSettings) : []),
     [normalizedSettings, sourceText],
@@ -161,8 +167,14 @@ export default function App() {
   }, [currentPage, normalizedPageSize, visibleRows]);
   const pageButtons = useMemo(() => getPageButtons(currentPage, totalPages), [currentPage, totalPages]);
   const extractionRunKey = useMemo(
-    () => buildExtractionRunKey(sourceText, selectedModel, normalizedSettings),
-    [normalizedSettings, selectedModel, sourceText],
+    () => buildExtractionRunKey(
+      sourceText,
+      selectedProvider === 'openai'
+        ? `${selectedModel}:${openAiConfig.baseUrl}:${openAiConfig.modelOverride}`
+        : selectedModel,
+      normalizedSettings,
+    ),
+    [normalizedSettings, openAiConfig, selectedModel, selectedProvider, sourceText],
   );
   const canResumeExtraction = extractionState?.status === 'failed' &&
     extractionState.runKey === extractionRunKey &&
@@ -193,6 +205,7 @@ export default function App() {
       const collected = await extractChunksWithQueue({
         apiKeys: usableApiKeys,
         modelId: selectedModel,
+        openAiConfig: selectedProvider === 'openai' ? openAiConfig : undefined,
         chunks,
         settings: normalizedSettings,
         initialChunkResults,
@@ -316,7 +329,13 @@ export default function App() {
   function updateSourceText(value: string) {
     setSourceText(value);
     setExtractionState((current) => (
-      current?.runKey === buildExtractionRunKey(value, selectedModel, normalizedSettings) ? current : null
+      current?.runKey === buildExtractionRunKey(
+        value,
+        selectedProvider === 'openai'
+          ? `${selectedModel}:${openAiConfig.baseUrl}:${openAiConfig.modelOverride}`
+          : selectedModel,
+        normalizedSettings,
+      ) ? current : null
     ));
   }
 
@@ -475,6 +494,8 @@ export default function App() {
           dragActive={dragActive}
           newApiKey={newApiKey}
           normalizedSettings={normalizedSettings}
+          openAiBaseUrl={openAiBaseUrl}
+          openAiModelOverride={openAiModelOverride}
           progress={progress}
           selectedModel={selectedModel}
           selectedProviderLabel={selectedProviderLabel}
@@ -489,6 +510,8 @@ export default function App() {
           onDrop={handleTextDrop}
           onImportFile={importTextFile}
           onNewApiKeyChange={setNewApiKey}
+          onOpenAiBaseUrlChange={setOpenAiBaseUrl}
+          onOpenAiModelOverrideChange={setOpenAiModelOverride}
           onPaste={pasteFromClipboard}
           onPreviewOpen={() => setPreviewOpen(true)}
           onRemoveApiKey={removeApiKey}
