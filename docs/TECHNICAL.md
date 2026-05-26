@@ -187,7 +187,7 @@ Vì API key được lưu trong local storage, nên app nên được xem là lo
 
 `estimateUsage` ước lượng input/output token và nhân với giá model trong `MODEL_OPTIONS`.
 
-Input/output text token estimate là provider-aware. Gemini và OpenAI dùng approximation khoảng 4 ký tự cho 1 token. DeepSeek dùng heuristic theo tài liệu DeepSeek: khoảng 0.6 token cho mỗi ký tự Hán và 0.3 token cho mỗi ký tự còn lại; khi chỉ có tổng số ký tự mà không có text, app dùng tỷ lệ ký tự Hán để tránh underestimate truyện Trung. Số chính xác cần `countTokens`, `usageMetadata` hoặc trường `usage` của OpenAI-compatible response, nhưng app hiện chỉ dùng estimate để hiển thị phí và spacing TPM.
+Input/output text token estimate là provider-aware. Gemini dùng approximation khoảng 4 ký tự cho 1 token. OpenAI dùng heuristic conservative khoảng 1 token cho mỗi ký tự Hán và 0.25 token cho mỗi ký tự còn lại. DeepSeek dùng heuristic theo tài liệu DeepSeek: khoảng 0.6 token cho mỗi ký tự Hán và 0.3 token cho mỗi ký tự còn lại; khi chỉ có tổng số ký tự mà không có text, app dùng tỷ lệ ký tự Hán để tránh underestimate truyện Trung. Số chính xác cần `countTokens`, `usageMetadata` hoặc trường `usage` của OpenAI-compatible response, nhưng app hiện chỉ dùng estimate để hiển thị phí và spacing TPM.
 
 Giá trong source là giá mẫu để app estimate. Giá thực tế của Google, DeepSeek hoặc OpenAI có thể thay đổi. DeepSeek input estimate hiện dùng giá cache miss, chưa trừ cache hit. Tài liệu public nên link trang pricing chính thức:
 

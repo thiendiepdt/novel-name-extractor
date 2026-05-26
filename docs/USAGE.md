@@ -181,7 +181,7 @@ Dược Tễ Sư=Dược Sĩ
 
 Trong dialog, nếu đặt `Đoạn=Đoàn` ở dòng `Nhân vật` và để các loại khác trống, app chỉ đổi tên nhân vật; các loại khác giữ nguyên hoặc dùng rule `Tất cả loại` nếu có.
 
-Token và phí trong app là ước lượng. Gemini và OpenAI dùng approximation khoảng 4 ký tự cho 1 token. DeepSeek dùng heuristic theo tài liệu DeepSeek: khoảng 0.6 token cho mỗi ký tự Hán và 0.3 token cho mỗi ký tự còn lại. Output thực tế có thể lệch theo tokenizer/model, cache hit của DeepSeek và số entity AI trả về.
+Token và phí trong app là ước lượng. Gemini dùng approximation khoảng 4 ký tự cho 1 token. OpenAI dùng heuristic conservative khoảng 1 token cho mỗi ký tự Hán và 0.25 token cho mỗi ký tự còn lại. DeepSeek dùng heuristic theo tài liệu DeepSeek: khoảng 0.6 token cho mỗi ký tự Hán và 0.3 token cho mỗi ký tự còn lại. Output thực tế có thể lệch theo tokenizer/model, cache hit của DeepSeek và số entity AI trả về.
 
 ## Troubleshooting
 
