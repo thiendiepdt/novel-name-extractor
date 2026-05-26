@@ -2,6 +2,7 @@ export const STORAGE_KEYS = {
   legacyApiKey: 'ai_name_extractor_api_key',
   apiKeys: 'ai_name_extractor_api_keys_list',
   deepseekApiKeys: 'ai_name_extractor_deepseek_api_keys_list',
+  openaiApiKeys: 'ai_name_extractor_openai_api_keys_list',
   model: 'ai_name_extractor_model',
   settings: 'ai_name_extractor_settings',
   hanvietOverrides: 'ai_name_extractor_hanviet_overrides',

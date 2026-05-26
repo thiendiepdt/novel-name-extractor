@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { MODEL_OPTIONS, getRateLimits } from '@/lib/gemini';
+import { MODEL_OPTIONS, getModelProviderLabel, getRateLimits } from '@/lib/gemini';
 import { GUIDE_CHARS_PER_CHAPTER, GUIDE_NOVEL_CHAPTERS } from '../constants';
 import { compactNumber, formatUsd } from '../lib/format';
 import type { GuideEstimate, TierOption } from '../types';
@@ -35,7 +35,7 @@ export function GuideDialog({ estimate, tiers, onClose }: GuideDialogProps) {
               <GuideList items={[
                 'Dán raw text tiếng Trung hoặc tải file .txt.',
                 'Chọn kiểu truyện: Đông phương dùng Hán Việt; Quốc tế giữ tên nước ngoài theo phiên âm/spelling gốc khi rõ, còn tên Hán/tu tiên vẫn dùng Hán Việt.',
-                'Chọn model và thêm đúng API key cho provider đang dùng. Gemini có Quota Free/Paid Tier 1; DeepSeek dùng key DeepSeek riêng.',
+                'Chọn model và thêm đúng API key cho provider đang dùng. Gemini có Quota Free/Paid Tier 1; DeepSeek và OpenAI dùng key riêng.',
                 'Chọn độ phủ Cao nếu muốn bắt nhiều tên phụ; Cân bằng nếu muốn ít nhiễu hơn.',
                 'Bấm Trích xuất, kiểm tra bảng kết quả, rồi copy hoặc tải Names.txt / Names2.txt.',
                 'Dùng Sửa Hán Việt để thêm rule Han=Viet; click rule để sửa tên riêng theo từng loại kết quả.',
@@ -78,7 +78,7 @@ export function GuideDialog({ estimate, tiers, onClose }: GuideDialogProps) {
                 'Thêm nhiều key: app sẽ xoay vòng key theo từng chunk/request.',
                 'Gemini rate limit trong app được điều tiết theo Quota đang chọn, nên chọn đúng Free API hoặc Paid Tier 1.',
                 'Nhiều key giúp tiếp tục khi một key lỗi hoặc hết quota, nhưng không thay thế billing cho workload lớn.',
-                'DeepSeek V4 Flash dùng OpenAI-compatible API và key riêng; app gọi trực tiếp endpoint DeepSeek.',
+                'DeepSeek V4 Flash và GPT-5.4 Nano dùng key riêng theo provider; app gọi trực tiếp endpoint của provider tương ứng.',
                 'Gemini Free API phù hợp test hoặc truyện ngắn. Paid Tier 1 phù hợp chạy truyện dài, song song cao và ít phải canh quota.',
               ]} />
               <div className="mt-3 overflow-x-auto rounded-md border border-border">
@@ -137,7 +137,7 @@ export function GuideDialog({ estimate, tiers, onClose }: GuideDialogProps) {
                     {MODEL_OPTIONS.map((model) => (
                       <tr key={model.id} className="border-t border-border">
                         <td className="whitespace-nowrap px-3 py-2 font-medium text-foreground">{model.label}</td>
-                        <td className="whitespace-nowrap px-3 py-2">{model.provider === 'deepseek' ? 'DeepSeek' : 'Gemini'}</td>
+                        <td className="whitespace-nowrap px-3 py-2">{getModelProviderLabel(model.id)}</td>
                         <td className="whitespace-nowrap px-3 py-2 font-mono">${model.inputUsdPerMillion}/1M</td>
                         <td className="whitespace-nowrap px-3 py-2 font-mono">${model.outputUsdPerMillion}/1M</td>
                       </tr>

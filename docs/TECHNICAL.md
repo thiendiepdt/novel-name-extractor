@@ -1,6 +1,6 @@
 # Tài Liệu Kỹ Thuật
 
-AI Name Extractor là app single-page dùng Vite + React + TypeScript. App chạy hoàn toàn trong browser và gọi Gemini API trực tiếp từ client-side code.
+AI Name Extractor là app single-page dùng Vite + React + TypeScript. App chạy hoàn toàn trong browser và gọi Gemini, DeepSeek hoặc OpenAI trực tiếp từ client-side code.
 
 ## Stack
 
@@ -10,14 +10,16 @@ AI Name Extractor là app single-page dùng Vite + React + TypeScript. App chạ
 - Tailwind CSS
 - lucide-react icons
 - Gemini Developer API
+- DeepSeek OpenAI-compatible API
+- OpenAI Responses API
 
 ## Luồng xử lý tổng quát
 
 1. Người dùng đưa raw text tiếng Trung vào app.
 2. App normalize extraction settings.
 3. Raw text được chia thành các chunk có overlap.
-4. Các chunk được gửi tới Gemini với concurrency và rate-limit spacing.
-5. Mỗi response từ Gemini được parse thành JSON.
+4. Các chunk được gửi tới provider AI với concurrency và rate-limit spacing.
+5. Mỗi response từ provider được parse thành JSON.
 6. Row được normalize và merge.
 7. Count được tính lại theo raw text gốc.
 8. Export layer format thành text tương thích QuickTranslator.
@@ -27,7 +29,7 @@ AI Name Extractor là app single-page dùng Vite + React + TypeScript. App chạ
 | Path | Vai trò |
 | --- | --- |
 | `src/App.tsx` | Điều phối state chính, extraction workflow, filter, pagination, export value. |
-| `src/lib/gemini.ts` | Config model Gemini, rate limit, chunking, usage estimate, queue, retry, prompt, parser, merge logic. |
+| `src/lib/gemini.ts` | Config model/provider, rate limit, chunking, usage estimate, queue, retry, prompt, parser, merge logic. |
 | `src/features/name-extractor/components/source-panel.tsx` | Raw text input, upload/drop/paste, nút chạy extraction. |
 | `src/features/name-extractor/components/settings-panel.tsx` | API key manager và settings UI. |
 | `src/features/name-extractor/components/results-panel.tsx` | Search, category filter, sort, pagination, result table. |
@@ -184,12 +186,13 @@ Vì API key được lưu trong local storage, nên app nên được xem là lo
 
 `estimateUsage` ước lượng input/output token và nhân với giá model trong `MODEL_OPTIONS`.
 
-Input/output text token estimate là provider-aware. Gemini dùng approximation khoảng 4 ký tự cho 1 token. DeepSeek dùng heuristic theo tài liệu DeepSeek: khoảng 0.6 token cho mỗi ký tự Hán và 0.3 token cho mỗi ký tự còn lại; khi chỉ có tổng số ký tự mà không có text, app dùng tỷ lệ ký tự Hán để tránh underestimate truyện Trung. Số chính xác cần `countTokens`, `usageMetadata` hoặc trường `usage` của OpenAI-compatible response, nhưng app hiện chỉ dùng estimate để hiển thị phí và spacing TPM.
+Input/output text token estimate là provider-aware. Gemini và OpenAI dùng approximation khoảng 4 ký tự cho 1 token. DeepSeek dùng heuristic theo tài liệu DeepSeek: khoảng 0.6 token cho mỗi ký tự Hán và 0.3 token cho mỗi ký tự còn lại; khi chỉ có tổng số ký tự mà không có text, app dùng tỷ lệ ký tự Hán để tránh underestimate truyện Trung. Số chính xác cần `countTokens`, `usageMetadata` hoặc trường `usage` của OpenAI-compatible response, nhưng app hiện chỉ dùng estimate để hiển thị phí và spacing TPM.
 
-Giá trong source là giá mẫu để app estimate. Giá thực tế của Google hoặc DeepSeek có thể thay đổi. DeepSeek input estimate hiện dùng giá cache miss, chưa trừ cache hit. Tài liệu public nên link trang pricing chính thức:
+Giá trong source là giá mẫu để app estimate. Giá thực tế của Google, DeepSeek hoặc OpenAI có thể thay đổi. DeepSeek input estimate hiện dùng giá cache miss, chưa trừ cache hit. Tài liệu public nên link trang pricing chính thức:
 
 https://ai.google.dev/gemini-api/docs/pricing
 https://api-docs.deepseek.com/quick_start/pricing
+https://platform.openai.com/docs/pricing
 
 ## Build commands
 

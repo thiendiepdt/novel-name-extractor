@@ -2,7 +2,7 @@
 
 AI Name Extractor là công cụ chạy trên trình duyệt để trích xuất tên riêng từ raw text truyện tiếng Trung, sau đó xuất ra định dạng thân thiện với QuickTranslator như `Names.txt` hoặc `Names2.txt`.
 
-Ứng dụng dùng Gemini API trực tiếp từ browser, tự chia text dài thành chunk, xoay nhiều API key, retry lỗi tạm thời, và có thể chạy tiếp từ chunk lỗi nếu raw text/model/settings chưa đổi.
+Ứng dụng gọi trực tiếp Gemini, DeepSeek hoặc OpenAI từ browser, tự chia text dài thành chunk, xoay nhiều API key, retry lỗi tạm thời, và có thể chạy tiếp từ chunk lỗi nếu raw text/model/settings chưa đổi.
 
 ![Ảnh màn hình ứng dụng](docs/images/screenshot.png)
 
@@ -15,7 +15,7 @@ AI Name Extractor là công cụ chạy trên trình duyệt để trích xuất
 - Xuất nội dung cho `Names.txt` và `Names2.txt`.
 - Tự format tên có dấu chấm giữa hoặc gạch ngang để QuickTranslator hiểu được. Ví dụ `洞冥·旋风杀` sẽ được xuất thành `洞冥 · 旋风杀`.
 - Chia raw text dài thành chunk có overlap.
-- Hỗ trợ nhiều Gemini API key và xoay key theo request.
+- Hỗ trợ nhiều API key theo provider và xoay key theo request.
 - Có retry, backoff khi rate limit, timeout, và tự tách đôi chunk khi request timeout.
 - Có thể retry tiếp từ chunk lỗi nếu source text và settings vẫn khớp.
 - Lưu settings/API key trong local storage của browser.
@@ -31,7 +31,7 @@ https://name-extractor.pages.dev
 Yêu cầu cho người dùng:
 
 - Trình duyệt hiện đại.
-- Một hoặc nhiều Gemini API key từ Google AI Studio.
+- Một hoặc nhiều API key của provider bạn chọn.
 
 ## Chạy local cho developer
 
@@ -58,7 +58,7 @@ npm run typecheck
 ## Workflow cơ bản
 
 1. Dán raw text truyện Trung hoặc tải file `.txt`.
-2. Thêm ít nhất một Gemini API key.
+2. Thêm ít nhất một API key đúng với provider của model đang chọn.
 3. Chọn model, quota, kiểu truyện, độ phủ, cỡ chunk, số request song song, số lần retry và timeout.
 4. Bấm `Trích xuất`.
 5. Kiểm tra bảng kết quả, lọc/sort nếu cần.
@@ -101,8 +101,9 @@ Repo này có bảng giá mẫu trong app để ước lượng chi phí. Đây 
 | Gemini 2.5 Flash | $0.30 | $2.50 |
 | Gemini 2.5 Flash Lite | $0.10 | $0.40 |
 | DeepSeek V4 Flash | $0.14 | $0.28 |
+| GPT-5.4 Nano | $0.05 | $0.40 |
 
-Free API hiển thị phí `$0` trong app vì request free-tier không bị tính tiền, nhưng free tier có limit thấp hơn và phù hợp nhất cho test hoặc workload nhỏ. Token trong app là ước lượng theo provider: Gemini dùng khoảng 4 ký tự cho 1 token; DeepSeek dùng heuristic theo tài liệu DeepSeek, khoảng 0.6 token cho mỗi ký tự Hán và 0.3 token cho mỗi ký tự còn lại. Số thực tế có thể lệch theo tokenizer/model và cache hit của DeepSeek.
+Free API hiển thị phí `$0` trong app vì request free-tier không bị tính tiền, nhưng free tier có limit thấp hơn và phù hợp nhất cho test hoặc workload nhỏ. Token trong app là ước lượng theo provider: Gemini và OpenAI dùng khoảng 4 ký tự cho 1 token; DeepSeek dùng heuristic theo tài liệu DeepSeek, khoảng 0.6 token cho mỗi ký tự Hán và 0.3 token cho mỗi ký tự còn lại. Số thực tế có thể lệch theo tokenizer/model và cache hit của DeepSeek.
 
 ## Tài liệu
 
@@ -119,7 +120,7 @@ Nếu fork hoặc host app này:
 
 - Không commit API key thật.
 - Ưu tiên dùng local hoặc private deployment.
-- Nói rõ với người dùng rằng browser sẽ gọi trực tiếp Gemini API.
+- Nói rõ với người dùng rằng browser sẽ gọi trực tiếp API của provider đang chọn.
 - Dùng API key restriction và billing alert trong Google Cloud.
 
 ## License
