@@ -2,7 +2,7 @@ import hanVietRaw from '@/features/name-extractor/data/han-viet.txt?raw';
 import hauTuRaw from '@/features/name-extractor/data/hau-tu.txt?raw';
 
 export type Category = 'Person' | 'Location' | 'Faction' | 'Artifact' | 'Skill' | 'Title' | 'Creature';
-export type ModelProvider = 'gemini' | 'deepseek';
+export type ModelProvider = 'gemini' | 'deepseek' | 'openai';
 export type NameStyle = 'eastern' | 'western';
 export type NameReading = 'hanviet' | 'foreign';
 export type RecallMode = 'high' | 'balanced';
@@ -96,6 +96,14 @@ export const MODEL_OPTIONS = [
     inputUsdPerMillion: 0.14,
     outputUsdPerMillion: 0.28,
   },
+  {
+    id: 'gpt-5.4-nano',
+    provider: 'openai',
+    label: 'GPT-5.4 Nano',
+    shortLabel: '5.4 Nano',
+    inputUsdPerMillion: 0.05,
+    outputUsdPerMillion: 0.4,
+  },
  ] as const;
 export type ModelId = (typeof MODEL_OPTIONS)[number]['id'];
 export const DEFAULT_MODEL_ID = 'gemini-3.1-flash-lite';
@@ -116,6 +124,7 @@ export const RATE_LIMITS = {
     'gemini-2.5-flash': { rpm: 10, tpm: 250000, rpd: 250 },
     'gemini-2.5-flash-lite': { rpm: 15, tpm: 250000, rpd: 1000 },
     'deepseek-v4-flash': { rpm: 2500, tpm: 1000000, rpd: '*' },
+    'gpt-5.4-nano': { rpm: 500, tpm: 1000000, rpd: '*' },
   },
   tier1: {
     'gemini-3-flash-preview': { rpm: 1000, tpm: 2000000, rpd: 10000 },
@@ -123,6 +132,7 @@ export const RATE_LIMITS = {
     'gemini-2.5-flash': { rpm: 1000, tpm: 1000000, rpd: 10000 },
     'gemini-2.5-flash-lite': { rpm: 4000, tpm: 4000000, rpd: '*' },
     'deepseek-v4-flash': { rpm: 2500, tpm: 1000000, rpd: '*' },
+    'gpt-5.4-nano': { rpm: 500, tpm: 1000000, rpd: '*' },
   },
 } satisfies Record<TierId, Record<ModelId, RateLimits>>;
 export const DEFAULT_EXTRACTION_SETTINGS: ExtractionSettings = {
@@ -138,6 +148,7 @@ export const DEFAULT_EXTRACTION_SETTINGS: ExtractionSettings = {
 };
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const DEEPSEEK_API_BASE = 'https://api.deepseek.com';
+const OPENAI_API_BASE = 'https://api.openai.com/v1';
 const CATEGORIES = new Set<Category>(['Person', 'Location', 'Faction', 'Artifact', 'Skill', 'Title', 'Creature']);
 const REQUEST_TIMEOUT_MS = 15000;
 const FREE_TIER_REQUEST_TIMEOUT_MS = 30000;
@@ -186,7 +197,10 @@ export function getModelProvider(modelId: string): ModelProvider {
 }
 
 export function getModelProviderLabel(modelId: string) {
-  return getModelProvider(modelId) === 'deepseek' ? 'DeepSeek' : 'Gemini';
+  const provider = getModelProvider(modelId);
+  if (provider === 'deepseek') return 'DeepSeek';
+  if (provider === 'openai') return 'OpenAI';
+  return 'Gemini';
 }
 
 export function getRateLimits(modelId: string, tierId: TierId = DEFAULT_TIER_ID): RateLimits {
@@ -662,9 +676,11 @@ async function extractChunk(
 ): Promise<NameRow[]> {
   const prompt = buildPrompt(chunk, index, total, nameStyle, recallMode, descriptionMode);
   const model = getModelOption(modelId);
-  const text = model.provider === 'deepseek'
-    ? await extractOpenAiCompatibleChunk(apiKey, model.id, prompt, index, total, requestTimeoutSeconds)
-    : await extractGeminiChunk(apiKey, model.id, prompt, index, total, requestTimeoutSeconds);
+  const text = model.provider === 'gemini'
+    ? await extractGeminiChunk(apiKey, model.id, prompt, index, total, requestTimeoutSeconds)
+    : model.provider === 'openai'
+      ? await extractOpenAiResponsesChunk(apiKey, model.id, prompt, index, total, requestTimeoutSeconds)
+      : await extractOpenAiCompatibleChunk(apiKey, model.id, prompt, index, total, requestTimeoutSeconds);
 
   try {
     return normalizeRows(parseJsonPayload(text), nameStyle);
@@ -791,6 +807,62 @@ async function extractOpenAiCompatibleChunk(
 
   const data = await response.json();
   return getOpenAiCompatibleResponseText(data, index, total);
+}
+
+async function extractOpenAiResponsesChunk(
+  apiKey: string,
+  modelId: string,
+  prompt: string,
+  index: number,
+  total: number,
+  requestTimeoutSeconds: number,
+): Promise<string> {
+  const controller = new AbortController();
+  const requestTimeoutMs = requestTimeoutSeconds * 1000;
+  const timeoutId = window.setTimeout(() => controller.abort(), requestTimeoutMs);
+  let response: Response;
+
+  try {
+    response = await fetch(`${OPENAI_API_BASE}/responses`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: modelId,
+        input: prompt,
+        max_output_tokens: 16384,
+        text: { format: { type: 'json_object' } },
+        store: false,
+      }),
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      const timeoutError: GeminiError = new Error(`OpenAI request quá ${Math.round(requestTimeoutMs / 1000)} giây ở chunk ${index}/${total}.`);
+      timeoutError.retryable = true;
+      timeoutError.timedOut = true;
+      throw timeoutError;
+    }
+    const geminiError = toGeminiError(error);
+    geminiError.retryable = true;
+    throw geminiError;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '');
+    const error: GeminiError = new Error(`OpenAI API ${response.status}: ${detail.slice(0, 280)}`);
+    error.status = response.status;
+    error.retryable = response.status === 429 || response.status >= 500;
+    error.retryAfterMs = parseRetryAfter(response.headers.get('retry-after'));
+    throw error;
+  }
+
+  const data = await response.json();
+  return getOpenAiResponsesText(data, index, total);
 }
 
 async function waitForRequestSlot({
@@ -1274,6 +1346,30 @@ function getOpenAiCompatibleResponseText(data: unknown, index: number, total: nu
   }
 
   return '';
+}
+
+function getOpenAiResponsesText(data: unknown, index: number, total: number): string {
+  if (!isRecord(data)) return '';
+
+  if (typeof data.output_text === 'string') return data.output_text;
+
+  if (isRecord(data.incomplete_details) && data.incomplete_details.reason === 'content_filter') {
+    const error: GeminiError = new Error(`OpenAI chặn chunk ${index}/${total}: content_filter.`);
+    error.retryable = false;
+    error.blockReason = 'content_filter';
+    throw error;
+  }
+
+  if (!Array.isArray(data.output)) return '';
+  return data.output
+    .flatMap((item) => (isRecord(item) && Array.isArray(item.content) ? item.content : []))
+    .map((part) => {
+      if (!isRecord(part)) return '';
+      if (typeof part.text === 'string') return part.text;
+      if (typeof part.content === 'string') return part.content;
+      return '';
+    })
+    .join('\n');
 }
 
 function createBlockedResponseError({

@@ -58,6 +58,7 @@ export default function App() {
   const [legacyApiKey, setLegacyApiKey] = useStoredState(STORAGE_KEYS.legacyApiKey, '');
   const [geminiApiKeys, setGeminiApiKeys] = useStoredJsonState<string[]>(STORAGE_KEYS.apiKeys, []);
   const [deepseekApiKeys, setDeepseekApiKeys] = useStoredJsonState<string[]>(STORAGE_KEYS.deepseekApiKeys, []);
+  const [openaiApiKeys, setOpenaiApiKeys] = useStoredJsonState<string[]>(STORAGE_KEYS.openaiApiKeys, []);
   const [selectedModel, setSelectedModel] = useStoredState(STORAGE_KEYS.model, DEFAULT_MODEL_ID);
   const [settings, setSettings] = useStoredJsonState<ExtractionSettings>(STORAGE_KEYS.settings, DEFAULT_EXTRACTION_SETTINGS);
   const [hanvietOverrideRules, setHanvietOverrideRules] = useStoredJsonState<HanvietOverrideRule[]>(STORAGE_KEYS.hanvietOverrides, []);
@@ -117,11 +118,14 @@ export default function App() {
     if (selectedProvider === 'deepseek') {
       return [...new Set((Array.isArray(deepseekApiKeys) ? deepseekApiKeys : []).map((key) => String(key).trim()).filter(Boolean))];
     }
+    if (selectedProvider === 'openai') {
+      return [...new Set((Array.isArray(openaiApiKeys) ? openaiApiKeys : []).map((key) => String(key).trim()).filter(Boolean))];
+    }
 
     const migrated = legacyApiKey ? [legacyApiKey] : [];
     const storedKeys = Array.isArray(geminiApiKeys) ? geminiApiKeys : [];
     return [...new Set([...storedKeys, ...migrated].map((key) => String(key).trim()).filter(Boolean))];
-  }, [deepseekApiKeys, geminiApiKeys, legacyApiKey, selectedProvider]);
+  }, [deepseekApiKeys, geminiApiKeys, legacyApiKey, openaiApiKeys, selectedProvider]);
   const visibleRows = useMemo(() => {
     let next = [...displayRows];
     const query = search.trim().toLowerCase();
@@ -365,6 +369,8 @@ export default function App() {
     if (!key) return;
     if (selectedProvider === 'deepseek') {
       setDeepseekApiKeys((current) => [...new Set([...current, key])]);
+    } else if (selectedProvider === 'openai') {
+      setOpenaiApiKeys((current) => [...new Set([...current, key])]);
     } else {
       setGeminiApiKeys((current) => [...new Set([...current, key])]);
       setLegacyApiKey('');
@@ -375,6 +381,8 @@ export default function App() {
   function removeApiKey(key: string) {
     if (selectedProvider === 'deepseek') {
       setDeepseekApiKeys((current) => current.filter((item) => item !== key));
+    } else if (selectedProvider === 'openai') {
+      setOpenaiApiKeys((current) => current.filter((item) => item !== key));
     } else {
       setGeminiApiKeys((current) => current.filter((item) => item !== key));
       if (legacyApiKey === key) setLegacyApiKey('');
