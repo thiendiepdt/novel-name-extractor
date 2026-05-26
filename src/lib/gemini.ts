@@ -115,6 +115,8 @@ export const DEFAULT_MODEL_ID = 'gemini-3.1-flash-lite';
 export const GEMINI_TEXT_CHARS_PER_TOKEN = 4;
 export const DEEPSEEK_HAN_TOKENS_PER_CHAR = 0.6;
 export const DEEPSEEK_NON_HAN_TOKENS_PER_CHAR = 0.3;
+export const OPENAI_HAN_TOKENS_PER_CHAR = 1;
+export const OPENAI_NON_HAN_TOKENS_PER_CHAR = 0.25;
 export const PROMPT_OVERHEAD_TOKENS = 260;
 export const TIER_OPTIONS = [
   { id: 'free', label: 'Free API' },
@@ -230,7 +232,8 @@ export function getModelPricing(modelId: string, tierId: TierId = DEFAULT_TIER_I
 
 export function estimateTokens(text: string, modelId: string = DEFAULT_MODEL_ID) {
   const characters = Array.from(text || '');
-  if (getModelProvider(modelId) !== 'deepseek') {
+  const provider = getModelProvider(modelId);
+  if (provider === 'gemini') {
     return estimateTokensFromCharCount(characters.length, modelId);
   }
 
@@ -240,6 +243,13 @@ export function estimateTokens(text: string, modelId: string = DEFAULT_MODEL_ID)
   }
 
   const nonHanCharCount = characters.length - hanCharCount;
+  if (provider === 'openai') {
+    return Math.ceil(
+      (hanCharCount * OPENAI_HAN_TOKENS_PER_CHAR) +
+      (nonHanCharCount * OPENAI_NON_HAN_TOKENS_PER_CHAR),
+    );
+  }
+
   return Math.ceil(
     (hanCharCount * DEEPSEEK_HAN_TOKENS_PER_CHAR) +
     (nonHanCharCount * DEEPSEEK_NON_HAN_TOKENS_PER_CHAR),
@@ -250,6 +260,9 @@ export function estimateTokensFromCharCount(charCount: number, modelId: string =
   const safeCharCount = Math.max(0, charCount);
   if (getModelProvider(modelId) === 'deepseek') {
     return Math.ceil(safeCharCount * DEEPSEEK_HAN_TOKENS_PER_CHAR);
+  }
+  if (getModelProvider(modelId) === 'openai') {
+    return Math.ceil(safeCharCount * OPENAI_HAN_TOKENS_PER_CHAR);
   }
 
   return Math.ceil(safeCharCount / GEMINI_TEXT_CHARS_PER_TOKEN);
