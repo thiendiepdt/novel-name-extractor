@@ -55,6 +55,58 @@
     --scrollbar-thumb-hover: hsl(210 9% 55%);
   }
 
+  .theme-claude-dark {
+    --background: 60 6% 10%;       /* #1b1b18 - Warm dark charcoal bg */
+    --foreground: 36 9% 90%;       /* #e8e6e3 - Warm light grey text */
+    --card: 45 6% 13%;             /* #22211e - Intermediate warm charcoal card/panels bg */
+    --card-foreground: 36 9% 90%;  /* #e8e6e3 */
+    --primary: 15 57% 52%;         /* #c96442 - Terracotta brand accent */
+    --primary-foreground: 48 20% 97%; /* #faf9f5 - Ivory text on terracotta */
+    --secondary: 45 10% 8%;        /* #161512 - Deepest warm charcoal */
+    --secondary-foreground: 36 9% 90%; /* #e8e6e3 */
+    --muted: 45 10% 8%;            /* #161512 */
+    --muted-foreground: 42 7% 62%;  /* #a5a198 - Warm muted grey text */
+    --accent: 45 6% 13%;           /* #22211e - Hover state bg */
+    --accent-foreground: 36 9% 90%; /* #e8e6e3 */
+    --destructive: 0 56% 45%;      /* #b53333 - Crimson red */
+    --destructive-foreground: 48 20% 97%; /* #faf9f5 */
+    --border: 40 6% 21%;           /* #383632 - Dark warm brown divider */
+    --input: 45 10% 8%;            /* #161512 */
+    --ring: 15 57% 52%;            /* Terracotta focus ring */
+    --radius: 0.375rem;
+
+    /* Scrollbars for Claude Dark Theme */
+    --scrollbar-track: hsl(45 6% 13%);
+    --scrollbar-thumb: hsl(45 10% 8%);
+    --scrollbar-thumb-hover: hsl(15 57% 52%);
+  }
+
+  .theme-claude {
+    --background: 44 25% 89%;      /* #ebe7dc - Softer warm parchment gray bg */
+    --foreground: 60 3% 11%;       /* #1e1e1c - Soft warm charcoal text */
+    --card: 42 28% 94%;            /* #f5f2eb - Off-white clean parchment card/panels bg */
+    --card-foreground: 60 3% 11%;   /* #1e1e1c */
+    --primary: 15 57% 52%;         /* #c96442 - Terracotta brand accent */
+    --primary-foreground: 42 28% 94%; /* #f5f2eb */
+    --secondary: 44 24% 83%;       /* #ded9cb - Recessed sand containers */
+    --secondary-foreground: 60 3% 11%; /* #1e1e1c */
+    --muted: 44 24% 83%;           /* #ded9cb */
+    --muted-foreground: 44 7% 40%;  /* #6e6a5f - Muted warm gray text */
+    --accent: 44 24% 83%;          /* #ded9cb */
+    --accent-foreground: 60 3% 11%; /* #1e1e1c */
+    --destructive: 0 56% 45%;      /* #b53333 */
+    --destructive-foreground: 42 28% 94%; /* #f5f2eb */
+    --border: 40 20% 85%;          /* #dfdad0 - Soft warm gray border */
+    --input: 44 24% 83%;           /* #ded9cb */
+    --ring: 15 57% 52%;
+    --radius: 0.5rem;
+
+    /* Scrollbars for Claude Theme */
+    --scrollbar-track: hsl(44 25% 89%);
+    --scrollbar-thumb: hsl(44 24% 83%);
+    --scrollbar-thumb-hover: hsl(15 57% 52%);
+  }
+
   * {
     @apply border-border;
     scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);

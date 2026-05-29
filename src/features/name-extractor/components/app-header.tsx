@@ -38,6 +38,8 @@ export function AppHeader({
             className="bg-transparent text-xs font-medium text-muted-foreground outline-none hover:text-foreground cursor-pointer"
           >
             <option value="discord" className="bg-card">Discord</option>
+            <option value="claude-dark" className="bg-card">Claude Tối</option>
+            <option value="claude" className="bg-card">Claude Sáng</option>
             <option value="green" className="bg-card">Xanh lá</option>
           </select>
         </div>
