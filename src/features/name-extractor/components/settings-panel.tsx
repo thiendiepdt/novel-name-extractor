@@ -1,10 +1,12 @@
-import { Eye, EyeOff, KeyRound, Plus, SlidersHorizontal, Trash2 } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { Eye, EyeOff, ListChecks, KeyRound, Plus, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DEFAULT_EXTRACTION_SETTINGS, TIER_OPTIONS, getModelOption } from '@/lib/gemini';
-import type { ExtractionSettings, RateLimits } from '@/lib/gemini';
+import type { Category, ExtractionSettings, RateLimits } from '@/lib/gemini';
+import { CATEGORIES as CATEGORY_OPTIONS, CATEGORY_LABELS } from '../constants';
 import { compactNumber, formatUsd, maskApiKey } from '../lib/format';
-import type { SettingsPatchKey, UsageEstimate } from '../types';
+import type { SettingsPatchKey, SettingsPatchValue, UsageEstimate } from '../types';
 
 export function SettingsPanel({
   activeRateLimits,
@@ -44,7 +46,7 @@ export function SettingsPanel({
   onOpenAiModelOverrideChange: (value: string) => void;
   onRemoveApiKey: (key: string) => void;
   onResetSettings: (settings: ExtractionSettings) => void;
-  onSettingChange: (key: SettingsPatchKey, value: string | number) => void;
+  onSettingChange: (key: SettingsPatchKey, value: SettingsPatchValue) => void;
   onShowKeyToggle: () => void;
 }) {
   const selectedModelOption = getModelOption(selectedModel);
@@ -76,15 +78,12 @@ export function SettingsPanel({
         onShowKeyToggle={onShowKeyToggle}
       />
       <div className="grid grid-cols-2 gap-2">
-        <SegmentedSetting
-          label="Kiểu truyện"
-          options={[
-            { label: 'Đông phương', value: 'eastern' },
-            { label: 'Quốc tế', value: 'western' },
-          ]}
+        <NameStyleSetting
           value={normalizedSettings.nameStyle}
+          foreignReadingCategories={normalizedSettings.foreignReadingCategories}
           disabled={busy}
-          onChange={(value) => onSettingChange('nameStyle', value)}
+          onNameStyleChange={(value) => onSettingChange('nameStyle', value)}
+          onForeignReadingCategoriesChange={(value) => onSettingChange('foreignReadingCategories', value)}
         />
         {usesQuotaTiers ? (
           <SegmentedSetting
@@ -193,6 +192,146 @@ export function SettingsPanel({
         </div>
       </div>
     </div>
+  );
+}
+
+function NameStyleSetting({
+  value,
+  foreignReadingCategories,
+  disabled,
+  onNameStyleChange,
+  onForeignReadingCategoriesChange,
+}: {
+  value: string;
+  foreignReadingCategories: Category[];
+  disabled: boolean;
+  onNameStyleChange: (value: string) => void;
+  onForeignReadingCategoriesChange: (value: Category[]) => void;
+}) {
+  return (
+    <div className="col-span-2 grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2 text-xs text-muted-foreground">
+      <span className="truncate">Kiểu truyện</span>
+      <div className="relative min-w-0">
+        <div className="grid grid-cols-2 rounded-md bg-muted p-1">
+          <Button
+            variant={value === 'eastern' ? 'default' : 'ghost'}
+            className="h-8"
+            disabled={disabled}
+            onClick={() => onNameStyleChange('eastern')}
+          >
+            Đông phương
+          </Button>
+          <Button
+            variant={value === 'western' ? 'default' : 'ghost'}
+            className="h-8"
+            disabled={disabled}
+            onClick={() => onNameStyleChange('western')}
+          >
+            Quốc tế
+          </Button>
+        </div>
+        <ForeignReadingCategoryMenu
+          active={value === 'western'}
+          value={foreignReadingCategories}
+          disabled={disabled}
+          onChange={onForeignReadingCategoriesChange}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ForeignReadingCategoryMenu({
+  active,
+  value,
+  disabled,
+  onChange,
+}: {
+  active: boolean;
+  value: Category[];
+  disabled: boolean;
+  onChange: (value: Category[]) => void;
+}) {
+  const detailsRef = useRef<HTMLDetailsElement>(null);
+  const selected = new Set(value);
+
+  useEffect(() => {
+    const details = detailsRef.current;
+    if (!details) return;
+    if (!active) {
+      details.open = false;
+      return;
+    }
+
+    function closeOnOutsidePointerDown(event: PointerEvent) {
+      if (!detailsRef.current?.contains(event.target as Node | null)) {
+        detailsRef.current!.open = false;
+      }
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape' && detailsRef.current) {
+        detailsRef.current.open = false;
+      }
+    }
+
+    document.addEventListener('pointerdown', closeOnOutsidePointerDown);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePointerDown);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [active]);
+
+  function toggleCategory(category: Category) {
+    if (disabled) return;
+    const next = selected.has(category)
+      ? value.filter((item) => item !== category)
+      : CATEGORY_OPTIONS.filter((item) => selected.has(item) || item === category);
+    onChange(next);
+  }
+
+  return (
+    <details
+      ref={detailsRef}
+      className={`group absolute right-2 top-1/2 z-20 -translate-y-1/2 transition duration-150 ease-out ${
+        active ? 'scale-100 opacity-100' : 'pointer-events-none scale-95 opacity-0'
+      }`}
+    >
+      <summary
+        className={`flex h-6 w-14 list-none items-center justify-center gap-1 rounded border border-primary/40 bg-background/85 px-1.5 font-mono text-[11px] font-semibold text-foreground shadow-sm backdrop-blur marker:hidden transition-colors [&::-webkit-details-marker]:hidden ${
+          disabled ? 'pointer-events-none opacity-50' : 'cursor-pointer hover:bg-accent/60'
+        }`}
+        title="Chọn loại entity giữ spelling quốc tế"
+      >
+        <ListChecks className="h-3 w-3" />
+        <span className="truncate">{value.length}/7</span>
+      </summary>
+      {active && (
+        <div className="absolute right-0 top-full z-30 mt-1 grid w-72 grid-cols-2 gap-1 rounded-md border border-border bg-card p-2 shadow-xl">
+          <p className="col-span-2 mb-1 text-xs leading-5 text-muted-foreground">
+            Tick loại muốn giữ spelling quốc tế; bỏ tick sẽ dùng Hán Việt.
+          </p>
+          {CATEGORY_OPTIONS.map((category) => (
+            <label
+              key={category}
+              className={`flex h-7 min-w-0 items-center gap-1.5 rounded px-1.5 ${
+                disabled ? 'opacity-60' : 'cursor-pointer hover:bg-accent/60'
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={selected.has(category)}
+                disabled={disabled}
+                onChange={() => toggleCategory(category)}
+                className="h-3.5 w-3.5 shrink-0 accent-primary"
+              />
+              <span className="truncate">{CATEGORY_LABELS[category]}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </details>
   );
 }
 

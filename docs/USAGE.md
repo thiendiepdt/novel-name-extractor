@@ -59,7 +59,7 @@ Khuyến nghị:
 ### Kiểu truyện
 
 - `Đông phương`: output Hán Việt tiếng Việt có dấu.
-- `Quốc tế`: giữ tên nước ngoài theo phiên âm/spelling gốc khi có thể phục hồi từ ngữ cảnh, ví dụ tên Anh/Âu, Nhật, Hàn. Với ngữ cảnh Nhật, app ưu tiên romanization kiểu Hepburn thay vì Hán Việt. Tên Hán, tu tiên, tông môn, cảnh giới hoặc tên không rõ là ngoại quốc vẫn dùng Hán Việt có dấu.
+- `Quốc tế`: mặc định giữ tên nhân vật và địa danh nước ngoài theo phiên âm/spelling gốc khi có thể phục hồi từ ngữ cảnh, ví dụ tên Anh/Âu, Nhật, Hàn. Nhóm `Giữ spelling` cho phép chọn thêm hoặc bỏ bớt loại entity được giữ spelling; các loại không được chọn sẽ dùng Hán Việt có dấu để dễ đọc hơn.
 
 ### Quota
 

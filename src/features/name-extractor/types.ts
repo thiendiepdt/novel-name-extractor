@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { ExtractionSettings, NameRow, RateLimits, TierId, estimateUsage } from '@/lib/gemini';
+import type { Category, ExtractionSettings, NameRow, RateLimits, TierId, estimateUsage } from '@/lib/gemini';
 
 export type ExportFormat = 'nametxt' | 'names2txt';
 export type UploadMode = 'replace' | 'append';
@@ -46,3 +46,4 @@ export type MetricProps = {
 
 export type RateLimitSummary = RateLimits;
 export type SettingsPatchKey = keyof ExtractionSettings;
+export type SettingsPatchValue = string | number | Category[];

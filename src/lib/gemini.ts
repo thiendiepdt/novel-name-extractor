@@ -21,6 +21,7 @@ export type NameRow = {
 export type ExtractionSettings = {
   tierId: TierId;
   nameStyle: NameStyle;
+  foreignReadingCategories: Category[];
   recallMode: RecallMode;
   descriptionMode: DescriptionMode;
   chunkSize: number;
@@ -124,6 +125,7 @@ export const TIER_OPTIONS = [
  ] as const;
 export type TierId = (typeof TIER_OPTIONS)[number]['id'];
 export const DEFAULT_TIER_ID = TIER_OPTIONS[0].id;
+export const DEFAULT_FOREIGN_READING_CATEGORIES: Category[] = ['Person', 'Location'];
 export const RATE_LIMITS = {
   free: {
     'gemini-3-flash-preview': { rpm: 10, tpm: 250000, rpd: 250 },
@@ -145,6 +147,7 @@ export const RATE_LIMITS = {
 export const DEFAULT_EXTRACTION_SETTINGS: ExtractionSettings = {
   tierId: DEFAULT_TIER_ID,
   nameStyle: 'eastern',
+  foreignReadingCategories: [...DEFAULT_FOREIGN_READING_CATEGORIES],
   recallMode: 'high',
   descriptionMode: 'none',
   chunkSize: 4000,
@@ -156,7 +159,8 @@ export const DEFAULT_EXTRACTION_SETTINGS: ExtractionSettings = {
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const DEEPSEEK_API_BASE = 'https://api.deepseek.com';
 const OPENAI_API_BASE = 'https://api.openai.com/v1';
-const CATEGORIES = new Set<Category>(['Person', 'Location', 'Faction', 'Artifact', 'Skill', 'Title', 'Creature']);
+const CATEGORY_VALUES: Category[] = ['Person', 'Location', 'Faction', 'Artifact', 'Skill', 'Title', 'Creature'];
+const CATEGORIES = new Set<Category>(CATEGORY_VALUES);
 const REQUEST_TIMEOUT_MS = 15000;
 const FREE_TIER_REQUEST_TIMEOUT_MS = 30000;
 const MIN_REQUEST_TIMEOUT_SECONDS = 5;
@@ -180,6 +184,7 @@ export function normalizeExtractionSettings(settings: Partial<ExtractionSettings
   return {
     tierId,
     nameStyle: settings.nameStyle === 'western' ? 'western' : DEFAULT_EXTRACTION_SETTINGS.nameStyle,
+    foreignReadingCategories: normalizeForeignReadingCategories(settings.foreignReadingCategories),
     recallMode: settings.recallMode === 'balanced' ? 'balanced' : DEFAULT_EXTRACTION_SETTINGS.recallMode,
     descriptionMode: settings.descriptionMode === 'full' ? 'full' : DEFAULT_EXTRACTION_SETTINGS.descriptionMode,
     chunkSize: clampNumber(settings.chunkSize, 1000, 30000, DEFAULT_EXTRACTION_SETTINGS.chunkSize),
@@ -193,6 +198,19 @@ export function normalizeExtractionSettings(settings: Partial<ExtractionSettings
       getDefaultRequestTimeoutSeconds(tierId),
     ),
   };
+}
+
+function normalizeForeignReadingCategories(value: unknown): Category[] {
+  if (!Array.isArray(value)) return [...DEFAULT_FOREIGN_READING_CATEGORIES];
+
+  const categories: Category[] = [];
+  for (const item of value) {
+    if (typeof item !== 'string' || !CATEGORIES.has(item as Category)) continue;
+    const category = item as Category;
+    if (!categories.includes(category)) categories.push(category);
+  }
+
+  return categories;
 }
 
 export function getModelOption(modelId: string) {
@@ -440,6 +458,7 @@ export async function extractChunksWithQueue({
           index: index + 1,
           total: chunks.length,
           nameStyle: normalized.nameStyle,
+          foreignReadingCategories: normalized.foreignReadingCategories,
           recallMode: normalized.recallMode,
           descriptionMode: normalized.descriptionMode,
           tierId: normalized.tierId,
@@ -498,6 +517,7 @@ async function extractChunkWithRetry({
   index,
   total,
   nameStyle,
+  foreignReadingCategories,
   recallMode,
   descriptionMode,
   tierId,
@@ -516,6 +536,7 @@ async function extractChunkWithRetry({
   index: number;
   total: number;
   nameStyle: NameStyle;
+  foreignReadingCategories: Category[];
   recallMode: RecallMode;
   descriptionMode: DescriptionMode;
   tierId: TierId;
@@ -541,7 +562,7 @@ async function extractChunkWithRetry({
         throw error;
       }
 
-      return await extractChunk(keyState.key, modelId, openAiConfig, chunk, index, total, nameStyle, recallMode, descriptionMode, requestTimeoutSeconds);
+      return await extractChunk(keyState.key, modelId, openAiConfig, chunk, index, total, nameStyle, foreignReadingCategories, recallMode, descriptionMode, requestTimeoutSeconds);
     } catch (error) {
       const geminiError = toGeminiError(error);
       coolDownApiKey(keyState, geminiError, attempt);
@@ -562,6 +583,7 @@ async function extractChunkWithRetry({
             index,
             total,
             nameStyle,
+            foreignReadingCategories,
             recallMode,
             descriptionMode,
             tierId,
@@ -594,6 +616,7 @@ async function extractChunkWithRetry({
           index,
           total,
           nameStyle,
+          foreignReadingCategories,
           recallMode,
           descriptionMode,
           tierId,
@@ -714,11 +737,12 @@ async function extractChunk(
   index: number,
   total: number,
   nameStyle: NameStyle,
+  foreignReadingCategories: Category[],
   recallMode: RecallMode,
   descriptionMode: DescriptionMode,
   requestTimeoutSeconds: number,
 ): Promise<NameRow[]> {
-  const prompt = buildPrompt(chunk, index, total, nameStyle, recallMode, descriptionMode);
+  const prompt = buildPrompt(chunk, index, total, nameStyle, foreignReadingCategories, recallMode, descriptionMode);
   const model = getModelOption(modelId);
   const text = model.provider === 'gemini'
     ? await extractGeminiChunk(apiKey, model.id, prompt, index, total, requestTimeoutSeconds)
@@ -727,7 +751,7 @@ async function extractChunk(
       : await extractOpenAiCompatibleChunk(apiKey, model.id, prompt, index, total, requestTimeoutSeconds);
 
   try {
-    return normalizeRows(parseJsonPayload(text), nameStyle);
+    return normalizeRows(parseJsonPayload(text), nameStyle, foreignReadingCategories);
   } catch (parseError) {
     const geminiError = toGeminiError(parseError);
     geminiError.retryable = true;
@@ -1068,21 +1092,38 @@ function buildPrompt(
   index: number,
   total: number,
   nameStyle: NameStyle,
+  foreignReadingCategories: Category[],
   recallMode: RecallMode,
   descriptionMode: DescriptionMode,
 ) {
+  const foreignReadingCategorySet = new Set(foreignReadingCategories);
+  const hanvietReadingCategories = CATEGORY_VALUES.filter((category) => !foreignReadingCategorySet.has(category));
+  const foreignCategoryList = formatCategoryList(foreignReadingCategories);
+  const hanvietCategoryList = formatCategoryList(hanvietReadingCategories);
   const romanizationRule = nameStyle === 'western'
     ? [
-      '- This text may contain international names from Western, Japanese, Korean, Chinese, or mixed settings.',
-      '- The "hanviet" field is a Vietnamese display name, not always English.',
-      '- Set "reading" to "hanviet" only for Chinese names/entities that should use Vietnamese Sino-reading; set it to "foreign" for English, Japanese, Korean, Western, or other non-Chinese names.',
-      '- For clearly non-Chinese foreign names, output the natural original-language Latin spelling/transliteration when recoverable from common usage or context.',
-      '- For Japanese personal names, use common Hepburn-style romanization, not Vietnamese Sino-reading. If the text contains Japanese surnames/given names such as 夏目, 藤原, 近藤, 西園寺, 雪村, 月島, 酒井, 堀川, 安井, 中島, 山本, 福田, 秋田, 山口, 東野, 御堂, 大西, 千景, 琉璃, 葵, 美雪, 七瀨, 鈴音, 未希, 凜, 紫苑, 佳織, 雅介, 亮鬥, 悟史, 康司, 司, 紗奈, 博太, 惠子, 智彥, 圭吾, 織姬, output Japanese-style romanization consistently.',
-      '- Do not mix Japanese romanization and Vietnamese Sino-reading for names from the same Japanese context. Prefer Natsume Chikage over Hạ Mục Thiên Cảnh, Fujiwara Aoi over Đằng Nguyên Quỳ, Kondo Miyuki over Cận Đằng Mỹ Tuyết, Tsukishima Rin over Nguyệt Đảo Lẫm.',
-      '- Preserve the name language instead of converting everything to English. Examples: 阿瑟 -> Arthur, 梅林 -> Merlin, 德川 -> Tokuda/Tokugawa when context supports it, 樱/樱花 as a Japanese name -> Sakura.',
-      '- For Chinese/East Asian names that are Chinese, xianxia-style, sect/title/realm-style, or not clearly foreign, use Vietnamese Sino-reading with full Vietnamese diacritics.',
-      '- If the exact foreign spelling is uncertain and the name could be Chinese, prefer Vietnamese Sino-reading instead of forcing an English guess.',
-      '- Never convert every name to English. International stories can contain names from multiple languages.',
+      '- This text contains international/Western names, Japanese, Korean, or mixed settings (e.g., superhero, sci-fi, modern urban, or European-like fantasy novels).',
+      ...(foreignReadingCategories.length > 0
+        ? [
+          `- For category ${foreignCategoryList}, the "hanviet" field is the Vietnamese display name and should keep the original Latin/English spelling or standard romanization when the Chinese text is a phonetic transliteration. Bad: "La Bá Đặc", "Mặc Khâu Lợi". Good: "Robert", "Mercury".`,
+          `- For category ${foreignCategoryList}, set "reading" to "foreign" and recover the original Latin/English spelling for any name that is a Chinese phonetic transliteration of a Western name.`,
+          `- Recognize transliteration characters: Chinese transliterated names are usually made of characters like 克, 斯, 德, 尔, 亚, 特, 罗, 贝, 莉, 纳, 维, 萨, 蒙, 森, 莱, 昂, 迪, 普, 姆, 恩, 杰, 瑞, 约, 翰, 逊, 霍, 华, 雅, etc. (e.g., 罗伯特, 艾尔, 芙萝拉, 约翰逊, 霍华德). Names in category ${foreignCategoryList} composed of these characters in this setting MUST be translated to their Western spelling (e.g., Robert, Al, Flora, Johnson, Howard) in the "hanviet" field.`,
+          `- For category ${foreignCategoryList} with multi-word Western names separated by a dot (·) or dash (-), translate each segment to its English/Latin equivalent (e.g., 墨丘利 · 安德森 -> "Mercury Anderson", 威利 · 约翰逊 -> "Willy Johnson", 诺娃 · 萨温娜 -> "Nova Savina/Savannah"). Do not mix Western spelling with Sino-Vietnamese reading.`,
+          `- Set "reading" to "hanviet" for genuine Chinese names in category ${foreignCategoryList} (e.g. explicit Chinese names like 张三, 李四) that should use Sino-Vietnamese reading.`,
+          `- For transliterated Western names in category ${foreignCategoryList}, do NOT use Sino-Vietnamese reading as a fallback. Even if the exact English spelling is slightly uncertain, make a reasonable phonetic English guess (e.g. 冯迪尔 -> "Vondir/Von Dier", 萨温娜 -> "Savina/Savannah") rather than outputting Hán Việt ("Phùng Địch Nhĩ", "Tát Ôn Na").`,
+        ]
+        : [
+          '- No category should use foreign/Latin display names in this run. Set "reading" to "hanviet" for every extracted entity.',
+        ]),
+      ...(hanvietReadingCategories.length > 0
+        ? [
+          `- For category ${hanvietCategoryList}, set "reading" to "hanviet" and use Vietnamese Sino-reading with full Vietnamese diacritics, even in international/Western settings.`,
+          `- Do NOT output Latin/English spelling for category ${hanvietCategoryList}. These categories should remain understandable to Vietnamese readers through Hán Việt display names.`,
+        ]
+        : []),
+      ...(foreignReadingCategorySet.has('Person')
+        ? ['- For Japanese personal names, use Hepburn-style romanization consistently (e.g. Natsume Chikage over Hạ Mục Thiên Cảnh, Fujiwara Aoi over Đằng Nguyên Quỳ, Kondo Miyuki over Cận Đằng Mỹ Tuyết, Tsukishima Rin over Nguyệt Đảo Lẫm).']
+        : []),
     ]
     : [
       '- Set "reading" to "hanviet" for every extracted entity.',
@@ -1185,7 +1226,7 @@ function extractFirstJsonObject(text: string) {
   return '';
 }
 
-function normalizeRows(payload: unknown, nameStyle: NameStyle): NameRow[] {
+function normalizeRows(payload: unknown, nameStyle: NameStyle, foreignReadingCategories: Category[]): NameRow[] {
   const list = Array.isArray(payload)
     ? payload
     : isObjectWithNames(payload)
@@ -1193,18 +1234,19 @@ function normalizeRows(payload: unknown, nameStyle: NameStyle): NameRow[] {
       : [];
   if (!Array.isArray(list)) return [];
 
+  const foreignReadingCategorySet = new Set(foreignReadingCategories);
   return list
-    .map((item) => normalizeRowItem(item, nameStyle))
+    .map((item) => normalizeRowItem(item, nameStyle, foreignReadingCategorySet))
     .filter((item) => containsHanChar(item.chinese) && item.hanviet);
 }
 
-function normalizeRowItem(item: unknown, nameStyle: NameStyle): NameRow {
+function normalizeRowItem(item: unknown, nameStyle: NameStyle, foreignReadingCategorySet: ReadonlySet<Category>): NameRow {
   const record = isRecord(item) ? item : {};
   const category = typeof record.category === 'string' && CATEGORIES.has(record.category as Category)
     ? record.category as Category
     : 'Person';
   const chinese = String(record.chinese || record.name || '').trim();
-  const reading = normalizeNameReading(record, nameStyle);
+  const reading = normalizeNameReading(record, nameStyle, category, foreignReadingCategorySet);
   const aiHanviet = formatHanvietName(String(record.hanviet || record.hanViet || '').trim());
   const dictionaryHanviet = reading === 'hanviet' ? translateHanVietName(chinese) : '';
 
@@ -1218,8 +1260,14 @@ function normalizeRowItem(item: unknown, nameStyle: NameStyle): NameRow {
   };
 }
 
-function normalizeNameReading(record: Record<string, unknown>, nameStyle: NameStyle): NameReading {
+function normalizeNameReading(
+  record: Record<string, unknown>,
+  nameStyle: NameStyle,
+  category: Category,
+  foreignReadingCategorySet: ReadonlySet<Category>,
+): NameReading {
   if (nameStyle === 'eastern') return 'hanviet';
+  if (!foreignReadingCategorySet.has(category)) return 'hanviet';
 
   const rawValue = record.reading ??
     record.nameReading ??
@@ -1333,6 +1381,10 @@ function titleCaseWords(value: string) {
     .filter(Boolean)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ');
+}
+
+function formatCategoryList(categories: Category[]) {
+  return categories.join(', ') || 'none';
 }
 
 function formatHanvietName(value: string) {
