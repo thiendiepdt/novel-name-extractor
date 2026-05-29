@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import type { ExtractionSettings, RateLimits } from '@/lib/gemini';
 import { TEXTAREA_CHAR_LIMIT } from '../constants';
 import { getRawPreviewText } from '../lib/extraction-session';
-import type { ProgressState, SettingsPatchKey, UploadMode, UsageEstimate } from '../types';
+import type { ProgressState, SettingsPatchKey, SettingsPatchValue, UploadMode, UsageEstimate } from '../types';
 import { SettingsPanel } from './settings-panel';
 
 export function SourcePanel({
@@ -73,7 +73,7 @@ export function SourcePanel({
   onRemoveApiKey: (key: string) => void;
   onResetSettings: (settings: ExtractionSettings) => void;
   onRun: () => void;
-  onSettingChange: (key: SettingsPatchKey, value: string | number) => void;
+  onSettingChange: (key: SettingsPatchKey, value: SettingsPatchValue) => void;
   onShowKeyToggle: () => void;
   onSourceTextChange: (value: string) => void;
   onUploadModeChange: (mode: UploadMode) => void;

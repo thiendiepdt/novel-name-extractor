@@ -35,6 +35,7 @@ import type {
   ExtractionState,
   ProgressState,
   SettingsPatchKey,
+  SettingsPatchValue,
   SortField,
   ToastState,
   UploadMode,
@@ -385,7 +386,7 @@ export default function App() {
     showToastTimeout = window.setTimeout(() => setToast(null), 3200);
   }
 
-  function updateSetting(key: SettingsPatchKey, value: string | number) {
+  function updateSetting(key: SettingsPatchKey, value: SettingsPatchValue) {
     setSettings((current) => normalizeExtractionSettings({
       ...current,
       [key]: value,
