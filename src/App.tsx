@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { DragEvent } from 'react';
 import { AppHeader } from '@/features/name-extractor/components/app-header';
 import { ExportPanel } from '@/features/name-extractor/components/export-panel';
@@ -66,6 +66,14 @@ export default function App() {
   const [hanvietOverrideRules, setHanvietOverrideRules] = useStoredJsonState<HanvietOverrideRule[]>(STORAGE_KEYS.hanvietOverrides, []);
   const [pageSize, setPageSize] = useStoredState(STORAGE_KEYS.pageSize, '20');
   const [theme, setTheme] = useStoredState(STORAGE_KEYS.theme, 'discord');
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.remove('theme-green', 'theme-claude-dark', 'theme-claude');
+    if (theme && theme !== 'discord') {
+      root.classList.add(`theme-${theme}`);
+    }
+  }, [theme]);
 
   const [newApiKey, setNewApiKey] = useState('');
   const [uploadMode, setUploadMode] = useState<UploadMode>('replace');
@@ -470,7 +478,9 @@ export default function App() {
   }
 
   return (
-    <div className={`flex h-screen min-w-80 flex-col overflow-hidden bg-background text-foreground ${theme === 'green' ? 'theme-green' : ''}`}>
+    <div className={`flex h-screen min-w-80 flex-col overflow-hidden bg-background text-foreground ${
+      theme === 'green' ? 'theme-green' : theme === 'claude-dark' ? 'theme-claude-dark' : theme === 'claude' ? 'theme-claude' : ''
+    }`}>
       <AppHeader
         apiKeyCount={usableApiKeys.length}
         busy={busy}
