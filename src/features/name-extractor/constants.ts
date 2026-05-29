@@ -9,6 +9,7 @@ export const STORAGE_KEYS = {
   settings: 'ai_name_extractor_settings',
   hanvietOverrides: 'ai_name_extractor_hanviet_overrides',
   pageSize: 'ai_name_extractor_page_size',
+  theme: 'ai_name_extractor_theme',
 };
 
 export const CATEGORIES: Category[] = ['Person', 'Location', 'Faction', 'Artifact', 'Skill', 'Title', 'Creature'];

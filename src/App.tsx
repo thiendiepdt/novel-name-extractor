@@ -65,6 +65,7 @@ export default function App() {
   const [settings, setSettings] = useStoredJsonState<ExtractionSettings>(STORAGE_KEYS.settings, DEFAULT_EXTRACTION_SETTINGS);
   const [hanvietOverrideRules, setHanvietOverrideRules] = useStoredJsonState<HanvietOverrideRule[]>(STORAGE_KEYS.hanvietOverrides, []);
   const [pageSize, setPageSize] = useStoredState(STORAGE_KEYS.pageSize, '20');
+  const [theme, setTheme] = useStoredState(STORAGE_KEYS.theme, 'discord');
 
   const [newApiKey, setNewApiKey] = useState('');
   const [uploadMode, setUploadMode] = useState<UploadMode>('replace');
@@ -469,13 +470,15 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen min-w-80 flex-col overflow-hidden bg-background text-foreground">
+    <div className={`flex h-screen min-w-80 flex-col overflow-hidden bg-background text-foreground ${theme === 'green' ? 'theme-green' : ''}`}>
       <AppHeader
         apiKeyCount={usableApiKeys.length}
         busy={busy}
         selectedModel={selectedModel}
         onGuideOpen={() => setGuideOpen(true)}
         onModelChange={setSelectedModel}
+        theme={theme}
+        onThemeChange={setTheme}
       />
       <MetricsBar
         chunks={chunks}
