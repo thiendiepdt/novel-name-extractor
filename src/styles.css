@@ -4,6 +4,32 @@
 
 @layer base {
   :root {
+    --background: 220 7% 18%;      /* #2b2d31 - Intermediate dark background (was #313338) */
+    --foreground: 210 9% 87%;      /* #dbdee1 - Normal body text */
+    --card: 223 7% 20%;            /* #313338 - Lighter card/panels bg (was #2b2d31) to increase text contrast */
+    --card-foreground: 220 9% 95%; /* #f2f3f5 - Active/Header text */
+    --primary: 235 70% 62%;        /* #606df2 - Softer Blurple (was #5865f2) to reduce eye strain from color vibration */
+    --primary-foreground: 0 0% 100%; /* White */
+    --secondary: 225 6% 13%;       /* #1e1f22 - Deepest dark (inputs and secondary containers) */
+    --secondary-foreground: 210 9% 87%; /* #dbdee1 */
+    --muted: 225 6% 13%;           /* #1e1f22 */
+    --muted-foreground: 217 9% 73%; /* #b5bac1 - Brighter secondary/muted text (was #949ba4) to meet WCAG AA contrast ratio */
+    --accent: 223 6% 22%;          /* #35373c - Hover state bg */
+    --accent-foreground: 220 9% 95%; /* #f2f3f5 */
+    --destructive: 359 88% 60%;    /* #f23f43 */
+    --destructive-foreground: 0 0% 100%;
+    --border: 225 6% 26%;          /* #3f4147 - Card dividers */
+    --input: 225 6% 13%;           /* #1e1f22 */
+    --ring: 235 70% 62%;
+    --radius: 0.375rem;
+
+    /* Scrollbars for Discord */
+    --scrollbar-track: hsl(223 7% 20%);
+    --scrollbar-thumb: hsl(225 6% 13%);
+    --scrollbar-thumb-hover: hsl(220 8% 34%);
+  }
+
+  .theme-green {
     --background: 210 30% 6%;
     --foreground: 195 28% 94%;
     --card: 210 27% 10%;
@@ -22,11 +48,16 @@
     --input: 210 18% 22%;
     --ring: 169 65% 46%;
     --radius: 0.5rem;
+
+    /* Scrollbars for Green Theme */
+    --scrollbar-track: hsl(210 20% 12%);
+    --scrollbar-thumb: hsl(210 10% 44%);
+    --scrollbar-thumb-hover: hsl(210 9% 55%);
   }
 
   * {
     @apply border-border;
-    scrollbar-color: hsl(210 10% 44%) hsl(210 20% 12%);
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
     scrollbar-width: thin;
   }
 
@@ -41,17 +72,17 @@
   }
 
   *::-webkit-scrollbar-track {
-    background: hsl(210 20% 12%);
+    background: var(--scrollbar-track);
   }
 
   *::-webkit-scrollbar-thumb {
-    background: hsl(210 10% 44%);
-    border: 2px solid hsl(210 20% 12%);
+    background: var(--scrollbar-thumb);
+    border: 2px solid var(--scrollbar-track);
     border-radius: 999px;
   }
 
   *::-webkit-scrollbar-thumb:hover {
-    background: hsl(210 9% 55%);
+    background: var(--scrollbar-thumb-hover);
   }
 }
 
