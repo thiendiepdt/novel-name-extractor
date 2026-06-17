@@ -1355,7 +1355,7 @@ function parseHanVietChineseOverrides(raw: string) {
   const entries: { key: string; words: string[] }[] = [];
 
   for (const rawLine of raw.split(/\r?\n/)) {
-    const line = rawLine.replace(/^﻿/, '').trim();
+    const line = rawLine.replace(/^\uFEFF/, '').trim();
     if (!line || line.startsWith('#')) continue;
     const separatorIndex = line.indexOf('=');
     if (separatorIndex <= 0) continue;
