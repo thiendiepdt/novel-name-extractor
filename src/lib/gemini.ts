@@ -5,7 +5,7 @@ export type Category = 'Person' | 'Location' | 'Faction' | 'Artifact' | 'Skill' 
 export type ModelProvider = 'gemini' | 'deepseek' | 'openai';
 export type NameStyle = 'eastern' | 'western';
 export type NameReading = 'hanviet' | 'foreign';
-export type RecallMode = 'high' | 'balanced';
+export type RecallMode = 'high' | 'balanced' | 'strict';
 export type DescriptionMode = 'full' | 'none';
 export type RateLimitValue = number | '*';
 
@@ -168,6 +168,7 @@ const MAX_REQUEST_TIMEOUT_SECONDS = 180;
 const MIN_TIMEOUT_SPLIT_CHARS = 1200;
 const HAN_VIET_MAP = parseHanVietMap(hanVietRaw);
 const LOWERCASE_HANVIET_SUFFIXES = parseLowercaseHanvietSuffixes(hauTuRaw);
+const HANVIET_CHINESE_OVERRIDES = parseHanVietChineseOverrides(hauTuRaw);
 const MIN_POLICY_BLOCK_SPLIT_CHARS = 500;
 const HAN_CHARACTER_PATTERN = /\p{Script=Han}/u;
 const GEMINI_SAFETY_SETTINGS_OFF = [
@@ -185,7 +186,7 @@ export function normalizeExtractionSettings(settings: Partial<ExtractionSettings
     tierId,
     nameStyle: settings.nameStyle === 'western' ? 'western' : DEFAULT_EXTRACTION_SETTINGS.nameStyle,
     foreignReadingCategories: normalizeForeignReadingCategories(settings.foreignReadingCategories),
-    recallMode: settings.recallMode === 'balanced' ? 'balanced' : DEFAULT_EXTRACTION_SETTINGS.recallMode,
+    recallMode: settings.recallMode === 'balanced' ? 'balanced' : settings.recallMode === 'strict' ? 'strict' : DEFAULT_EXTRACTION_SETTINGS.recallMode,
     descriptionMode: settings.descriptionMode === 'full' ? 'full' : DEFAULT_EXTRACTION_SETTINGS.descriptionMode,
     chunkSize: clampNumber(settings.chunkSize, 1000, 30000, DEFAULT_EXTRACTION_SETTINGS.chunkSize),
     chunkOverlap: clampNumber(settings.chunkOverlap, 0, 2000, DEFAULT_EXTRACTION_SETTINGS.chunkOverlap),
@@ -1132,7 +1133,17 @@ function buildPrompt(
       '- Use common Vietnamese Sino-Vietnamese readings: 天=Thiên, 算=Toán, 老=Lão, 人=Nhân, 王=Vương, 国=Quốc, 山=Sơn, 海=Hải, 神=Thần, 风=Phong, 子=Tử.',
     ];
 
-  const recallRules = recallMode === 'balanced'
+  const recallRules = recallMode === 'strict'
+    ? [
+      'Primary goal: same recall as balanced mode, but higher precision by filtering specific noise categories.',
+      '- Extract all named entities that balanced mode would extract — do NOT be more conservative on people, locations, factions, items, or named techniques.',
+      '- Additionally filter out these specific noise types that balanced mode over-includes:',
+      '  1. Pure cultivation/game mechanics words used as generic concepts, NOT as names: e.g., 攻击, 防御, 速度, 修炼, 功法, 武功, 境界, 气功, 功德, 魂力, 武魂, 体质, 灵力, 真气, 斗气 — skip only when these appear as generic labels, not as part of a specific named technique.',
+      '  2. Generic rank-prefixed labels like "一阶炼丹", "二阶功法" — skip unless they are the specific name of a titled entity.',
+      '  3. Common address forms that are not proper names: 老X, 小X, X哥, X叔, X爷, X师兄, X师妹 — skip unless the full form (e.g., 老刘) is the only name by which a character is known in the text.',
+      '- If unsure, include it — missing a real name is worse than including a borderline one.',
+    ]
+    : recallMode === 'balanced'
     ? [
       'Primary goal: balanced precision and recall.',
       '- Extract named entities only when the context reasonably supports that they are proper names.',
@@ -1296,25 +1307,40 @@ function normalizeNameReading(
 }
 
 export function translateHanVietName(value: string) {
+  const chars = Array.from(value.trim());
   const tokens: string[] = [];
   let hasHan = false;
   let lastWasSeparator = false;
+  let i = 0;
 
-  for (const char of Array.from(value.trim())) {
+  while (i < chars.length) {
+    const char = chars[i];
+
     if (isHanChar(char)) {
+      const remaining = chars.slice(i).join('');
+      const override = HANVIET_CHINESE_OVERRIDES.find(({ key }) => remaining.startsWith(key));
+      if (override) {
+        tokens.push(...override.words);
+        i += Array.from(override.key).length;
+        hasHan = true;
+        lastWasSeparator = false;
+        continue;
+      }
       const reading = HAN_VIET_MAP.get(char);
       if (!reading) return '';
       tokens.push(reading);
       hasHan = true;
       lastWasSeparator = false;
+      i++;
       continue;
     }
 
-    if (/\s/u.test(char)) continue;
+    if (/\s/u.test(char)) { i++; continue; }
     if (isNameSeparator(char)) {
-      if (!hasHan || lastWasSeparator) continue;
+      if (!hasHan || lastWasSeparator) { i++; continue; }
       tokens.push('·');
       lastWasSeparator = true;
+      i++;
       continue;
     }
 
@@ -1323,6 +1349,28 @@ export function translateHanVietName(value: string) {
 
   while (tokens[tokens.length - 1] === '·') tokens.pop();
   return hasHan ? formatHanvietName(tokens.join(' ')) : '';
+}
+
+function parseHanVietChineseOverrides(raw: string) {
+  const entries: { key: string; words: string[] }[] = [];
+
+  for (const rawLine of raw.split(/\r?\n/)) {
+    const line = rawLine.replace(/^\uFEFF/, '').trim();
+    if (!line || line.startsWith('#')) continue;
+    const separatorIndex = line.indexOf('=');
+    if (separatorIndex <= 0) continue;
+
+    const key = line.slice(0, separatorIndex).trim();
+    const value = line.slice(separatorIndex + 1).replace(/\s+/g, ' ').trim().toLocaleLowerCase('vi');
+    const keyChars = Array.from(key);
+    if (keyChars.length < 2 || !keyChars.every((c) => isHanChar(c)) || !value) continue;
+
+    entries.push({ key, words: value.split(' ') });
+  }
+
+  return entries.sort((a, b) =>
+    Array.from(b.key).length - Array.from(a.key).length || b.key.length - a.key.length,
+  );
 }
 
 function parseHanVietMap(raw: string) {
