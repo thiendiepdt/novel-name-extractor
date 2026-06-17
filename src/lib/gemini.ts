@@ -168,6 +168,7 @@ const MAX_REQUEST_TIMEOUT_SECONDS = 180;
 const MIN_TIMEOUT_SPLIT_CHARS = 1200;
 const HAN_VIET_MAP = parseHanVietMap(hanVietRaw);
 const LOWERCASE_HANVIET_SUFFIXES = parseLowercaseHanvietSuffixes(hauTuRaw);
+const HANVIET_CHINESE_OVERRIDES = parseHanVietChineseOverrides(hauTuRaw);
 const MIN_POLICY_BLOCK_SPLIT_CHARS = 500;
 const HAN_CHARACTER_PATTERN = /\p{Script=Han}/u;
 const GEMINI_SAFETY_SETTINGS_OFF = [
@@ -1134,12 +1135,13 @@ function buildPrompt(
 
   const recallRules = recallMode === 'strict'
     ? [
-      'Primary goal: maximum precision. Only extract when there is strong contextual evidence that a phrase is a specific, uniquely named entity.',
-      '- Require positive evidence: include a phrase only if context clearly treats it as a proper name — e.g., it is named by a character, given a rank/grade, referred to as a titled entity, or used consistently as a specific named thing.',
-      '- Skip generic cultivation/game/xianxia terms even if they appear as skill or category labels: e.g., 攻击 (công kích), 防御 (phòng ngự), 速度 (tốc độ), 修炼 (tu luyện), 功法 (công pháp), 武功 (võ công), 境界 (cảnh giới), 气功 (khí công), 功德 (công đức), 魂力 (hồn lực), 武魂 (vũ hồn), etc. — only extract these if they are the specific title of a named technique, not generic concept words.',
-      '- For Skill/Artifact categories: only extract the name when it is clearly the title of a specific technique or item (e.g., "Cửu Dương Thần Công", "Thiên Hà Kiếm"), not a description of what the skill/item does or a generic genre term.',
-      '- Skip ambiguous 2-4 character phrases unless there is strong context: they must be referenced multiple times as a named entity, or explicitly introduced as a proper name.',
-      '- When in doubt, skip it. Only include high-confidence entities.',
+      'Primary goal: same recall as balanced mode, but higher precision by filtering specific noise categories.',
+      '- Extract all named entities that balanced mode would extract — do NOT be more conservative on people, locations, factions, items, or named techniques.',
+      '- Additionally filter out these specific noise types that balanced mode over-includes:',
+      '  1. Pure cultivation/game mechanics words used as generic concepts, NOT as names: e.g., 攻击, 防御, 速度, 修炼, 功法, 武功, 境界, 气功, 功德, 魂力, 武魂, 体质, 灵力, 真气, 斗气 — skip only when these appear as generic labels, not as part of a specific named technique.',
+      '  2. Generic rank-prefixed labels like "一阶炼丹", "二阶功法" — skip unless they are the specific name of a titled entity.',
+      '  3. Common address forms that are not proper names: 老X, 小X, X哥, X叔, X爷, X师兄, X师妹 — skip unless the full form (e.g., 老刘) is the only name by which a character is known in the text.',
+      '- If unsure, include it — missing a real name is worse than including a borderline one.',
     ]
     : recallMode === 'balanced'
     ? [
@@ -1305,25 +1307,40 @@ function normalizeNameReading(
 }
 
 export function translateHanVietName(value: string) {
+  const chars = Array.from(value.trim());
   const tokens: string[] = [];
   let hasHan = false;
   let lastWasSeparator = false;
+  let i = 0;
 
-  for (const char of Array.from(value.trim())) {
+  while (i < chars.length) {
+    const char = chars[i];
+
     if (isHanChar(char)) {
+      const remaining = chars.slice(i).join('');
+      const override = HANVIET_CHINESE_OVERRIDES.find(({ key }) => remaining.startsWith(key));
+      if (override) {
+        tokens.push(...override.words);
+        i += Array.from(override.key).length;
+        hasHan = true;
+        lastWasSeparator = false;
+        continue;
+      }
       const reading = HAN_VIET_MAP.get(char);
       if (!reading) return '';
       tokens.push(reading);
       hasHan = true;
       lastWasSeparator = false;
+      i++;
       continue;
     }
 
-    if (/\s/u.test(char)) continue;
+    if (/\s/u.test(char)) { i++; continue; }
     if (isNameSeparator(char)) {
-      if (!hasHan || lastWasSeparator) continue;
+      if (!hasHan || lastWasSeparator) { i++; continue; }
       tokens.push('·');
       lastWasSeparator = true;
+      i++;
       continue;
     }
 
@@ -1332,6 +1349,28 @@ export function translateHanVietName(value: string) {
 
   while (tokens[tokens.length - 1] === '·') tokens.pop();
   return hasHan ? formatHanvietName(tokens.join(' ')) : '';
+}
+
+function parseHanVietChineseOverrides(raw: string) {
+  const entries: { key: string; words: string[] }[] = [];
+
+  for (const rawLine of raw.split(/\r?\n/)) {
+    const line = rawLine.replace(/^﻿/, '').trim();
+    if (!line || line.startsWith('#')) continue;
+    const separatorIndex = line.indexOf('=');
+    if (separatorIndex <= 0) continue;
+
+    const key = line.slice(0, separatorIndex).trim();
+    const value = line.slice(separatorIndex + 1).replace(/\s+/g, ' ').trim().toLocaleLowerCase('vi');
+    const keyChars = Array.from(key);
+    if (keyChars.length < 2 || !keyChars.every((c) => isHanChar(c)) || !value) continue;
+
+    entries.push({ key, words: value.split(' ') });
+  }
+
+  return entries.sort((a, b) =>
+    Array.from(b.key).length - Array.from(a.key).length || b.key.length - a.key.length,
+  );
 }
 
 function parseHanVietMap(raw: string) {
