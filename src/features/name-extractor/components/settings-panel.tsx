@@ -119,6 +119,7 @@ export function SettingsPanel({
           options={[
             { label: 'Cao', value: 'high' },
             { label: 'Cân bằng', value: 'balanced' },
+            { label: 'Nghiêm ngặt', value: 'strict' },
           ]}
           value={normalizedSettings.recallMode}
           disabled={busy}

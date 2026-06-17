@@ -5,7 +5,7 @@ export type Category = 'Person' | 'Location' | 'Faction' | 'Artifact' | 'Skill' 
 export type ModelProvider = 'gemini' | 'deepseek' | 'openai';
 export type NameStyle = 'eastern' | 'western';
 export type NameReading = 'hanviet' | 'foreign';
-export type RecallMode = 'high' | 'balanced';
+export type RecallMode = 'high' | 'balanced' | 'strict';
 export type DescriptionMode = 'full' | 'none';
 export type RateLimitValue = number | '*';
 
@@ -185,7 +185,7 @@ export function normalizeExtractionSettings(settings: Partial<ExtractionSettings
     tierId,
     nameStyle: settings.nameStyle === 'western' ? 'western' : DEFAULT_EXTRACTION_SETTINGS.nameStyle,
     foreignReadingCategories: normalizeForeignReadingCategories(settings.foreignReadingCategories),
-    recallMode: settings.recallMode === 'balanced' ? 'balanced' : DEFAULT_EXTRACTION_SETTINGS.recallMode,
+    recallMode: settings.recallMode === 'balanced' ? 'balanced' : settings.recallMode === 'strict' ? 'strict' : DEFAULT_EXTRACTION_SETTINGS.recallMode,
     descriptionMode: settings.descriptionMode === 'full' ? 'full' : DEFAULT_EXTRACTION_SETTINGS.descriptionMode,
     chunkSize: clampNumber(settings.chunkSize, 1000, 30000, DEFAULT_EXTRACTION_SETTINGS.chunkSize),
     chunkOverlap: clampNumber(settings.chunkOverlap, 0, 2000, DEFAULT_EXTRACTION_SETTINGS.chunkOverlap),
@@ -1132,7 +1132,16 @@ function buildPrompt(
       '- Use common Vietnamese Sino-Vietnamese readings: 天=Thiên, 算=Toán, 老=Lão, 人=Nhân, 王=Vương, 国=Quốc, 山=Sơn, 海=Hải, 神=Thần, 风=Phong, 子=Tử.',
     ];
 
-  const recallRules = recallMode === 'balanced'
+  const recallRules = recallMode === 'strict'
+    ? [
+      'Primary goal: maximum precision. Only extract when there is strong contextual evidence that a phrase is a specific, uniquely named entity.',
+      '- Require positive evidence: include a phrase only if context clearly treats it as a proper name — e.g., it is named by a character, given a rank/grade, referred to as a titled entity, or used consistently as a specific named thing.',
+      '- Skip generic cultivation/game/xianxia terms even if they appear as skill or category labels: e.g., 攻击 (công kích), 防御 (phòng ngự), 速度 (tốc độ), 修炼 (tu luyện), 功法 (công pháp), 武功 (võ công), 境界 (cảnh giới), 气功 (khí công), 功德 (công đức), 魂力 (hồn lực), 武魂 (vũ hồn), etc. — only extract these if they are the specific title of a named technique, not generic concept words.',
+      '- For Skill/Artifact categories: only extract the name when it is clearly the title of a specific technique or item (e.g., "Cửu Dương Thần Công", "Thiên Hà Kiếm"), not a description of what the skill/item does or a generic genre term.',
+      '- Skip ambiguous 2-4 character phrases unless there is strong context: they must be referenced multiple times as a named entity, or explicitly introduced as a proper name.',
+      '- When in doubt, skip it. Only include high-confidence entities.',
+    ]
+    : recallMode === 'balanced'
     ? [
       'Primary goal: balanced precision and recall.',
       '- Extract named entities only when the context reasonably supports that they are proper names.',
