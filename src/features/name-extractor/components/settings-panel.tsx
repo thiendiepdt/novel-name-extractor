@@ -428,7 +428,7 @@ function SegmentedSetting({
   return (
     <div className="col-span-2 grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2 text-xs text-muted-foreground">
       <span className="truncate">{label}</span>
-      <div className="grid grid-cols-2 rounded-md bg-muted p-1">
+      <div className="grid rounded-md bg-muted p-1" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
         {options.map((option) => (
           <Button
             key={option.value}
